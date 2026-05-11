@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+:root {
+    --fa-style-family-brands: "Font Awesome 6 Brands";
+    --fa-font-brands: normal 400 1em/1 "Font Awesome 6 Brands";
+    --fa-font-regular: normal 400 1em/1 "Font Awesome 6 Free";
+    --fa-style-family-classic: "Font Awesome 6 Free";
+    --fa-font-solid: normal 900 1em/1 "Font Awesome 6 Free";
+    --primary-color: #4caf50;
+    --primary-dark: #388e3c;
+    --primary-light: #4CAF501A;
+    --accent-color: #ff9800;
+    --accent-dark: #f57c00;
+    --accent-light: #ffe0b2;
+    --bg-light: #f9f9f9;
+    --bg-gray-soft: #f8fafc;
+    --border-color: #d9d9d9;
+    --border-light: #bfe0c0;
+    --white: #ffffff;
+    --black: #060606;
+    --text-color: rgb(75 85 99);  
+    --dark-bg: #0f172a;
+    --dropdown-bg: #1a1a1a;
+    --dropdown-hover: #2a2a2a;
+    --heading-dark: #0a1e33;
+    --hero-bg: #fdf2e3;
+    --text-heading: #111827;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --text-light: #9ca3af;
+    --text-on-dark: #e5e7eb;
+    --bg-soft: #f3f4f6;
+    --price-track: #333;
+    --price-fill: #6ab344;
+    --dot-inactive: #f99191;
+    --bg-color:rgb(249 250 251);
+    --green-gradient: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    --black-blur-bg: rgba(0, 0, 0, 0.8);
+    --glass-blur: blur(8px);
+    --popup-bg: linear-gradient(145deg, #ffffffcc, #f9f9f9cc);
+    --box-bg:rgb(255 255 255);
+     --font-family-main: "Poppins", sans-serif;
+}
+
+
+body{
+    font-family: var(--font-family-main);
+   
+    background-color: var(--bg-gray-soft);
+    color: var(--black);
+    scroll-behavior: smooth;
+}
+
+.brands-slider .swiper-wrapper {
+    transition-timing-function: linear !important;
+}
+
+/* Swiper Pagination Styling */
+.testimonial-slider {
+    padding-bottom: 40px !important;
+}
+
+.testimonial-slider .swiper-pagination-bullet {
+    background: var(--dot-inactive) !important;
+    opacity: 1 !important;
+    width: 15px !important;
+    height: 15px !important;
+    transition: all 0.3s ease !important;
+}
+
+.testimonial-slider .swiper-pagination-bullet-active {
+    background: var(--primary-color) !important;
+   
+    border-radius: 100% !important;
+}
+
+.testimonial-slider .swiper-pagination {
+    bottom: 0px !important;
+}
+
+.page-header-bg {
+    background-image: url('./assets/header-bg.png');
+    background-size: cover;
+    /* background-position: center; */
+    background-repeat: no-repeat;
+}
+
+/* Custom Horizontal Scrollbar for Filters */
+.filters-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) transparent;
+}
+
+@media (min-width: 768px) {
+    .filters-container {
+        flex-wrap: wrap !important;
+        overflow-x: visible;
+        padding-bottom: 0;
+        gap: 1rem;
+    }
+}
+
+/* Chrome, Safari, and Edge */
+.filters-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.filters-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.filters-container::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+}
+
+/* Swiper Navigation Custom Arrows */
+.swiper-button-next,
+.swiper-button-prev {
+    background-color: var(--primary-color) !important;
+    width: 35px !important;
+    height: 35px !important;
+    border-radius: 50% !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+    font-size: 16px !important;
+    font-weight: bold !important;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+    background-color: var(--primary-dark) !important;
+    transform: scale(1.1) !important;
+}
+
+/* Hide navigation on desktop for brand slider but show for mobile sliders */
+.brands-slider .swiper-button-next,
+.brands-slider .swiper-button-prev {
+    display: none !important;
+}
+
+/* Position adjustment for mobile sliders */
+.category-slider, .product-slider, .featured-slider {
+    position: relative !important;
+}
+
+@media (max-width: 768px) {
+    .swiper-button-next,
+    .swiper-button-prev {
+        width: 30px !important;
+        height: 30px !important;
+    }
+    
+    .swiper-button-next:after,
+    .swiper-button-prev:after {
+        font-size: 12px !important;
+    }
+}
+/* Page Loader Styles */
+.loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loader-content {
+    text-align: center;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid var(--primary-light);
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+.loader-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
