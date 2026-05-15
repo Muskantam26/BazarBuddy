@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import HeroCard from '../components/HeroCard';
 import paths from '../path/path';
 import SectionHeader from '../components/ui/SectionHeader';
@@ -35,6 +35,8 @@ import BlogCard from '../components/home/BlogCard';
 import Newsletter from '../components/home/Newsletter';
 import FilterButton from '../components/ui/FilterButton';
 import { getAllCategories } from '../api/Categories-api';
+import { getAllProducts } from '../api/Product-api';
+import { addToCart } from '../api/Cart-api';
 import { backendConfig } from '../constants/constant/Maincontent';
 import toast from 'react-hot-toast';
 
@@ -63,14 +65,24 @@ import banner2 from '../assets/home-banner-2.png';
 import banner3 from '../assets/home-banner-1.png';
 
 import offerbg from '../assets/offer-bg.png';
+import { useNavigate } from 'react-router-dom';
+
+import { incrementCount, addItemOptimistically } from '../redux/slices/cartSlice';
+import { useDispatch } from 'react-redux';
 
 const Home = () => {
-    const [activeFilter, setActiveFilter] = React.useState('All Products');
+    const [activeFilter, setActiveFilter] = useState('All Products');
     const filters = ['All Products', 'Vegetables', 'Snacks', 'Groceries'];
-    const [categories, setCategories] = React.useState([]);
-    const [loading, setLoading] = React.useState(false);
+    const [categories, setCategories] = useState([]);
+    const [allProducts, setAllProducts] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [productsLoading, setProductsLoading] = useState(false);
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const fetchCategories = async () => {
+
+
         setLoading(true);
         try {
             const res = await getAllCategories();
@@ -104,9 +116,54 @@ const Home = () => {
         }
     };
 
-    React.useEffect(() => {
+    const fetchProducts = async () => {
+        setProductsLoading(true);
+        try {
+            const res = await getAllProducts();
+            console.log("Products API Response:", res);
+            if (res.success) {
+                const productsData = Array.isArray(res.data)
+                    ? res.data
+                    : (res.data?.products || res.products || []);
+                
+                const formattedProducts = productsData.map(p => ({
+                    ...p,
+                    image: (p.image || p.img || p.images?.[0])?.startsWith('http')
+                        ? (p.image || p.img || p.images?.[0])
+                        : `${backendConfig.origin}/${p.image || p.img || p.images?.[0]}`
+                }));
+                setAllProducts(formattedProducts);
+            }
+        } catch (error) {
+            console.error("Error fetching products:", error);
+        } finally {
+            setProductsLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchCategories();
+        fetchProducts();
     }, []);
+
+    const handleAddToCart = async (productId, productName) => {
+        try {
+            const res = await addToCart(productId, 1);
+            if (res.success) {
+                toast.success(res.message || `${productName} added to cart!`);
+                // Instant update via Redux
+                dispatch(incrementCount(1));
+                dispatch(addItemOptimistically(productId));
+                // Trigger navbar update (for any other components listening)
+                window.dispatchEvent(new Event('cartUpdated'));
+            } else {
+                toast.error(res.message || "Failed to add to cart");
+            }
+        } catch (error) {
+            console.error("Add to cart error:", error);
+            toast.error(error?.response?.data?.message || "Something went wrong");
+        }
+    };
 
     const heroSlides = [
         {
@@ -348,7 +405,7 @@ const Home = () => {
                 <SectionHeader
                     title="Product Categories"
                     linkText="View All Categories"
-                    linkPath="/categories"
+                    onClick={() => navigate(paths.collections)}
                 />
                 {loading ? (
                     <div className="flex justify-center items-center min-h-[150px]">
@@ -395,17 +452,32 @@ const Home = () => {
                 <SectionHeader
                     title="Bestseller Product"
                     linkText="View All products"
-                    linkPath="/products"
+                     onClick={()=>navigate(paths.products)}
                 />
                 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {products.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            {...product}
-                            onCartClick={() => console.log('Added to cart:', product.name)}
-                            onWishlistClick={() => console.log('Added to wishlist:', product.name)}
-                        />
-                    ))}
+                    {productsLoading ? (
+                         <div className="col-span-full flex justify-center items-center min-h-[200px]">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--primary-color)]"></div>
+                        </div>
+                    ) : allProducts.length > 0 ? (
+                        allProducts.slice(0, 4).map((product) => (
+                            <ProductCard
+                                key={product._id}
+                                {...product}
+                                onCartClick={() => handleAddToCart(product._id, product.name)}
+                                onWishlistClick={null}
+                            />
+                        ))
+                    ) : (
+                        products.map((product) => (
+                            <ProductCard
+                                key={product.id}
+                                {...product}
+                                onCartClick={() => console.log('Added to cart:', product.name)}
+                                onWishlistClick={null}
+                            />
+                        ))
+                    )}
                 </div>
                 <div className="md:hidden">
                     <Swiper
@@ -415,12 +487,12 @@ const Home = () => {
                         modules={[Navigation]}
                         className="product-slider "
                     >
-                        {products.map((product) => (
-                            <SwiperSlide key={product.id}>
+                        {(allProducts.length > 0 ? allProducts.slice(0, 4) : products).map((product) => (
+                            <SwiperSlide key={product._id || product.id}>
                                 <ProductCard
                                     {...product}
-                                    onCartClick={() => console.log('Added to cart:', product.name)}
-                                    onWishlistClick={() => console.log('Added to wishlist:', product.name)}
+                                    onCartClick={() => handleAddToCart(product._id || product.id, product.name)}
+                                    onWishlistClick={null}
                                 />
                             </SwiperSlide>
                         ))}
@@ -433,7 +505,7 @@ const Home = () => {
                 <SectionHeader
                     title="Top Collections"
                     linkText="View All collection"
-                    linkPath={paths.collections}
+                     onClick={()=>navigate(paths.collections)}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {banners.map((banner, index) => (
@@ -483,6 +555,7 @@ const Home = () => {
                 <SectionHeader
                     title="Featured Product"
                     linkText=""
+                    
                 >
                     <div className="filters-container">
                         {filters.map((filter) => (
@@ -502,7 +575,7 @@ const Home = () => {
                             key={product.id}
                             {...product}
                             onCartClick={() => console.log('Added to cart:', product.name)}
-                            onWishlistClick={() => console.log('Added to wishlist:', product.name)}
+                            onWishlistClick={null}
                         />
                     ))}
                 </div>
@@ -519,7 +592,7 @@ const Home = () => {
                                 <ProductCard
                                     {...product}
                                     onCartClick={() => console.log('Added to cart:', product.name)}
-                                    onWishlistClick={() => console.log('Added to wishlist:', product.name)}
+                                    onWishlistClick={null}
                                 />
                             </SwiperSlide>
                         ))}
@@ -559,7 +632,7 @@ const Home = () => {
                             key={product.id}
                             {...product}
                             onCartClick={() => console.log('Added to cart:', product.name)}
-                            onWishlistClick={() => console.log('Added to wishlist:', product.name)}
+                            onWishlistClick={null}
                         />
                     ))}
                 </div>

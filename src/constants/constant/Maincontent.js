@@ -4,6 +4,7 @@ import appFavicon from "../../assets/footerlogo.png";
 import appFooterLogo from "../../assets/footerlogo.png";
 import axios from "axios";
 import store from "../../redux/store";
+import authStorage from "../../utils/authStorage";
 
 
 export const MainContent = {
@@ -43,8 +44,7 @@ export const Axios = axios.create({
 });
 Axios.interceptors.request.use(
   (config) => {
-    const state = store.getState();
-    const token = state?.auth?.token;
+    const token = authStorage.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

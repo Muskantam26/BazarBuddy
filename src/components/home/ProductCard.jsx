@@ -1,9 +1,52 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BsCart3, BsHeart, BsCheck2Circle } from 'react-icons/bs';
+import { toggleWishlist } from '../../redux/slices/wishlistSlice';
+import { toggleSidebar, addItemOptimistically } from '../../redux/slices/cartSlice';
+import { BsCart3, BsCartCheck, BsHeart, BsHeartFill, BsCheck2Circle } from 'react-icons/bs';
+import { useDispatch, useSelector } from 'react-redux';
 
-const ProductCard = ({ id, image, tag, name, description, price, oldPrice, onCartClick, onWishlistClick, showCheck }) => {
+const ProductCard = (props) => {
+  const { _id, id, images, image, tag, name, longDescription, description, mrp, sellingPrice, price, oldPrice, onCartClick, onWishlistClick, showCheck } = props;
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  
+  const productId = _id || id;
+  const productImages = images || (image ? [image] : []);
+  const productPrice = sellingPrice || price;
+  const productMrp = mrp || oldPrice;
+  const productDescription = longDescription || description;
+
+  const wishlistItems = useSelector((state) => state.wishlist.items);
+  const cartItems = useSelector((state) => state.cart.items);
+  const isInWishlist = wishlistItems.some((item) => item._id === productId);
+  const isInCart = cartItems.some((item) => (item.productId?._id || item.productId || item.id) === productId);
+
+  const handleCartClick = (e) => {
+    e.stopPropagation();
+    if (isInCart) {
+      dispatch(toggleSidebar(true));
+    } else if (onCartClick) {
+      onCartClick();
+      dispatch(addItemOptimistically(productId));
+    }
+  };
+
+  const handleWishlistClick = (e) => {
+    e.stopPropagation();
+    if (onWishlistClick) {
+      onWishlistClick();
+    } else {
+      const product = {
+        ...props,
+        _id: productId,
+        images: productImages,
+        sellingPrice: productPrice,
+        mrp: productMrp,
+        longDescription: productDescription
+      };
+      dispatch(toggleWishlist(product));
+    }
+  };
 
   const getTagColor = (tag) => {
     switch (tag?.toLowerCase()) {
@@ -17,7 +60,7 @@ const ProductCard = ({ id, image, tag, name, description, price, oldPrice, onCar
   const handleNavigate = (e) => {
     // Prevent navigation if clicking on cart or wishlist buttons
     if (e.target.closest('button')) return;
-    navigate(`/product/${id || 1}`);
+    navigate(`/product/${_id}`);
   };
 
   return (
@@ -44,7 +87,7 @@ const ProductCard = ({ id, image, tag, name, description, price, oldPrice, onCar
       {/* Image Container */}
       <div className="relative  h-50 w-full overflow-hidden flex items-center justify-center ">
         <img
-          src={image}
+          src={images}
           alt={name}
           className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-500"
         />
@@ -56,36 +99,42 @@ const ProductCard = ({ id, image, tag, name, description, price, oldPrice, onCar
           {name}
         </h3>
         <p className="text-sm text-[var(--text-muted)] mb-4 line-clamp-2 leading-relaxed">
-          {description}
+          {longDescription}
         </p>
 
         {/* Bottom Section: Price and Actions */}
         <div className="mt-auto pt-4 flex items-center justify-between border-t border-gray-50">
           <div className="flex items-center gap-1">
             <span className="text-xl font-extrabold text-[var(--text-main)]">
-              ${price}
+              ₹{sellingPrice}
             </span>
-            {oldPrice && (
+            {mrp && (
               <span className="text-sm text-[var(--text-light)] line-through">
-                ${oldPrice}
+                ₹{mrp}
               </span>
             )}
           </div>
 
           <div className="flex gap-2">
             <button
-              onClick={onWishlistClick}
-              className="p-2.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-light)] hover:bg-[var(--bg-soft)] hover:text-red-500 transition-all duration-300 shadow-sm"
-              aria-label="Add to wishlist"
+              onClick={handleWishlistClick}
+              className={`p-2.5 rounded-full bg-[var(--bg-soft)] transition-all duration-300 shadow-sm cursor-pointer ${
+                isInWishlist ? 'text-red-500' : 'text-[var(--text-light)] hover:text-red-500'
+              }`}
+              aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
             >
-              <BsHeart size={18} />
+              {isInWishlist ? <BsHeartFill size={18} /> : <BsHeart size={18} />}
             </button>
             <button
-              onClick={onCartClick}
-              className="p-2.5 rounded-full bg-[var(--primary-color)] text-white hover:bg-[var(--primary-dark)] transition-all duration-300 shadow-lg shadow-green-100 group-hover:scale-110"
-              aria-label="Add to cart"
+              onClick={handleCartClick}
+              className={`p-2.5 rounded-full transition-all duration-300 shadow-lg group-hover:scale-110 cursor-pointer ${
+                isInCart 
+                  ? 'bg-orange-500 text-white shadow-orange-100' 
+                  : 'bg-[var(--primary-color)] text-white hover:bg-[var(--primary-dark)] shadow-green-100'
+              }`}
+              aria-label={isInCart ? "Go to cart" : "Add to cart"}
             >
-              <BsCart3 size={18} />
+              {isInCart ? <BsCartCheck size={18} /> : <BsCart3 size={18} />}
             </button>
           </div>
         </div>

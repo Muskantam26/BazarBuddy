@@ -66,8 +66,8 @@ const FilterSidebar = ({ onClose }) => {
             }}
           />
           <div className="flex justify-between text-[var(--text-muted)] font-medium text-sm">
-            <span>$ 0.0</span>
-            <span>$ {parseFloat(priceRange).toLocaleString()}.0</span>
+            <span>₹ 0.0</span>
+            <span>₹ {parseFloat(priceRange).toLocaleString()}.0</span>
           </div>
         </div>
       </div>

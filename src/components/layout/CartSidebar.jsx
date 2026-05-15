@@ -1,41 +1,82 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HiX, HiTrash, HiMinus, HiPlus } from 'react-icons/hi';
 import FilterButton from '../ui/FilterButton';
 import { BiTrash } from 'react-icons/bi';
+import { getCartItems, addToCart, removeCartItem } from '../../api/Cart-api';
+import { useDispatch } from 'react-redux';
+import { fetchCartItems, toggleSidebar } from '../../redux/slices/cartSlice';
+import { backendConfig } from '../../constants/constant/Maincontent';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import paths from '../../path/path';
+
 
 const CartSidebar = ({ isOpen, onClose }) => {
-  const cartItems = [
-    {
-      id: 1,
-      image: "https://images.unsplash.com/photo-1566842637044-173b7427292d?q=80&w=2000&auto=format&fit=crop",
-      name: "Parle's Wafers",
-      price: 50.0,
-      quantity: 1
-    },
-    {
-      id: 2,
-      image: "https://images.unsplash.com/photo-1610348725531-843dff563e2c?q=80&w=2070&auto=format&fit=crop",
-      name: "Fresh Onion",
-      price: 152.0,
-      quantity: 1
-    },
-    {
-      id: 3,
-      image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=2070&auto=format&fit=crop",
-      name: "Klaas River Salmon Fillets 500 G| Frozen",
-      price: 1500.0,
-      quantity: 1
-    },
-    {
-      id: 4,
-      image: "https://images.unsplash.com/photo-1518843875459-f738682238a6?q=80&w=2042&auto=format&fit=crop",
-      name: "Fresh Tomato",
-      price: 80.0,
-      quantity: 1
-    }
-  ];
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const fetchCartItems = async () => {
+    try {
+      setLoading(true);
+      const res = await getCartItems();
+      if (res.success || res.status === 'success') {
+        // Handle various possible response structures
+        const items = res.items || 
+                      res.data?.items || 
+                      res.cart?.items || 
+                      res.data?.cart?.items || 
+                      (Array.isArray(res.data) ? res.data : []);
+        
+        console.log("Extracted cart items:", items);
+        setCartItems(Array.isArray(items) ? items : []);
+        // Update Redux state with full items
+        dispatch(fetchCartItems());
+      }
+    } catch (error) {
+      console.error("Fetch cart error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCartItems();
+    }
+  }, [isOpen]);
+
+  const handleUpdateQuantity = async (productId, newQuantity) => {
+    if (newQuantity < 1) return;
+    try {
+      const res = await addToCart(productId, newQuantity);
+      if (res.success) {
+        fetchCartItems();
+      }
+    } catch (error) {
+      toast.error("Failed to update quantity");
+    }
+  };
+
+  const handleRemoveItem = async (productId) => {
+    try {
+      const res = await removeCartItem(productId);
+      if (res.success) {
+        toast.success("Item removed");
+        fetchCartItems();
+      }
+    } catch (error) {
+      toast.error("Failed to remove item");
+    }
+  };
+
+  const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
+  const subtotal = safeCartItems.reduce((acc, item) => {
+    const product = item.productId || item.product || {};
+    const price = parseFloat(product.sellingPrice) || parseFloat(product.price) || 0;
+    return acc + (price * item.quantity);
+  }, 0);
   const tax = 0.0;
   const total = subtotal + tax;
 
@@ -53,10 +94,10 @@ const CartSidebar = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between p-2 px-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">
-            Your Cart ({cartItems.length})
+            Your Cart ({safeCartItems.length})
           </h2>
           <button 
-            onClick={onClose}
+            onClick={() => dispatch(toggleSidebar(false))}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <HiX size={24} />
@@ -65,44 +106,83 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
         {/* Cart Items List */}
         <div className="flex-1 overflow-y-auto p-6 space-y-2 custom-scrollbar">
-          {cartItems.map((item) => (
-            <div key={item.id} className="flex gap-4 items-center pb-6 border-b border-gray-50 last:border-none">
-              {/* Product Image */}
-              <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center p-2 border border-gray-100">
-                <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
-              </div>
-
-              {/* Product Info */}
-              <div className="flex-1 flex flex-col gap-2">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-gray-800 text-sm leading-tight max-w-[200px]">
-                    {item.name}
-                  </h3>
-                  <button className="text-red-500 hover:scale-110 transition-transform">
-                    <BiTrash size={20} />
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-between mt-2">
-                  {/* Quantity Controls */}
-                  <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden h-10">
-                    <button className="px-3 hover:bg-gray-50 text-gray-500 transition-colors">
-                      <HiMinus size={14} />
-                    </button>
-                    <span className="px-3 font-bold text-gray-900 w-6 text-center">{item.quantity}</span>
-                    <button className="px-3 hover:bg-gray-50 text-gray-500 transition-colors">
-                      <HiPlus size={14} />
-                    </button>
-                  </div>
-                  
-                  {/* Price */}
-                  <span className="text-lg font-bold text-black">
-                    ${item.price.toLocaleString()}
-                  </span>
-                </div>
-              </div>
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-color)]"></div>
             </div>
-          ))}
+          ) : safeCartItems.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              Your cart is empty
+            </div>
+          ) : (
+            safeCartItems.map((item) => {
+              const product = (item.productId && typeof item.productId === 'object') ? item.productId : 
+                              (item.product && typeof item.product === 'object') ? item.product : {};
+              
+              // Handle various image field names
+              const productImage = product.image || product.img || product.images?.[0];
+              const productName = product.name || 'Product';
+              const productPrice = parseFloat(product.sellingPrice) || parseFloat(product.price) || 0;
+
+              return (
+                <div key={item._id || product._id} className="flex gap-4 items-center pb-6 border-b border-gray-50 last:border-none">
+                  {/* Product Image */}
+                  <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center p-2 border border-gray-100">
+                    <img 
+                      src={productImage?.startsWith('http') ? productImage : `${backendConfig.origin}/${productImage}`} 
+                      alt={productName} 
+                      className="max-h-full max-w-full object-contain" 
+                    />
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-gray-800 text-sm leading-tight max-w-[200px]">
+                        {productName}
+                      </h3>
+                      <button 
+                        onClick={() => handleRemoveItem(product._id || item.productId || item.product)}
+                        className="text-red-500 hover:scale-110 transition-transform"
+                      >
+                        <BiTrash size={20} />
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-2">
+                      {/* Quantity Controls */}
+                      <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden h-10">
+                        <button 
+                          onClick={() => {
+                            const id = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.productId?._id);
+                            handleUpdateQuantity(id, item.quantity - 1);
+                          }}
+                          className="px-3 hover:bg-gray-50 text-gray-500 transition-colors cursor-pointer"
+                        >
+                          <HiMinus size={14} />
+                        </button>
+                        <span className="px-3 font-bold text-gray-900 w-6 text-center">{item.quantity}</span>
+                        <button 
+                          onClick={() => {
+                            const id = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.productId?._id);
+                            handleUpdateQuantity(id, item.quantity + 1);
+                          }}
+                          className="px-3 hover:bg-gray-50 text-gray-500 transition-colors cursor-pointer"
+                        >
+                          <HiPlus size={14} />
+                        </button>
+                      </div>
+                      
+                      {/* Price */}
+                      <span className="text-lg font-bold text-black">
+                        ₹{(productPrice * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Footer */}
@@ -110,21 +190,21 @@ const CartSidebar = ({ isOpen, onClose }) => {
           <div className="space-y-2">
             <div className="flex justify-between text-gray-800 font-medium">
               <span>Subtotal</span>
-              <span className="text-gray-900 font-bold">${subtotal.toLocaleString()}</span>
+              <span className="text-gray-900 font-bold">₹{subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-gray-800 font-medium">
               <span>Tax</span>
-              <span className="text-gray-900 font-bold">${tax.toLocaleString()}</span>
+              <span className="text-gray-900 font-bold">₹{tax.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-xl font-bold text-gray-900 pt-2">
               <span>Total</span>
-              <span>${total.toLocaleString()}</span>
+              <span>₹{total.toLocaleString()}</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 pt-2">
-            <FilterButton isActive={true} className="w-full py-4">
-              Proceed to Checkout
+            <FilterButton isActive={true} className="w-full py-4" onClick={() => { onClose(); navigate(paths.checkout); }}>
+              Checkout
             </FilterButton>
             <FilterButton onClick={onClose} className="w-full py-4">
               Continue Shopping

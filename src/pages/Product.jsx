@@ -11,6 +11,10 @@ import { TfiMenuAlt } from "react-icons/tfi";
 import { TfiLayoutGrid2Alt } from "react-icons/tfi";
 import { FiFilter } from "react-icons/fi";
 import { getAllProducts } from '../api/Product-api'
+import { addToCart } from '../api/Cart-api'
+import { useDispatch } from 'react-redux'
+import { incrementCount, addItemOptimistically } from '../redux/slices/cartSlice'
+import { backendConfig } from '../constants/constant/Maincontent'
 import toast from 'react-hot-toast'
 
 
@@ -62,9 +66,28 @@ const Product = () => {
         }
     };
 
+    const dispatch = useDispatch();
+
     useEffect(() => {
         fetchProducts();
     }, []);
+
+    const handleAddToCart = async (productId, productName) => {
+        try {
+            const res = await addToCart(productId, 1);
+            if (res.success) {
+                toast.success(res.message || `${productName} added to cart!`);
+                dispatch(incrementCount(1));
+                dispatch(addItemOptimistically(productId));
+                window.dispatchEvent(new Event('cartUpdated'));
+            } else {
+                toast.error(res.message || "Failed to add to cart");
+            }
+        } catch (error) {
+            console.error("Add to cart error:", error);
+            toast.error(error?.response?.data?.message || "Something went wrong");
+        }
+    };
 
     // Pagination Logic
     const safeProducts = Array.isArray(products) ? products : [];
@@ -193,13 +216,21 @@ const Product = () => {
                         ) : viewMode === 'grid' ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">
                                 {currentProducts.map((product) => (
-                                    <ProductCard key={product.id} {...product} />
+                                    <ProductCard 
+                                        key={product._id || product.id} 
+                                        {...product} 
+                                        onCartClick={() => handleAddToCart(product._id || product.id, product.name)}
+                                    />
                                 ))}
                             </div>
                         ) : (
                             <div className="flex flex-col gap-6 mt-5">
                                 {currentProducts.map((product) => (
-                                    <ProductCardList key={product.id} {...product} />
+                                    <ProductCardList 
+                                        key={product._id || product.id} 
+                                        {...product} 
+                                        onCartClick={() => handleAddToCart(product._id || product.id, product.name)}
+                                    />
                                 ))}
                             </div>
                         )}

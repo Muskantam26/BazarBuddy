@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../redux/slices/authSlice';
-import { logoutUser } from '../../api/User-api';
 import authStorage from '../../utils/authStorage';
+import { fetchCartCount, fetchCartItems } from '../../redux/slices/cartSlice';
 import toast from 'react-hot-toast';
 import paths from '../../path/path';
 
 import Input from '../ui/Input';
 import Button1 from '../ui/Button1';
-import { BsBuildings, BsCart3, BsPerson, BsSearch, BsList, BsXLg, BsLink45Deg, BsChevronDown } from 'react-icons/bs';
-import {appLogo} from"../../constants/constant/Maincontent";
+import { 
+    BsBuildings, 
+    BsCart3, 
+    BsPerson, 
+    BsSearch, 
+    BsList, 
+    BsXLg, 
+    BsLink45Deg, 
+    BsChevronDown,
+    BsHeart
+} from 'react-icons/bs';
+import {appLogo, backendConfig} from"../../constants/constant/Maincontent";
+import { getAllCategories } from '../../api/Categories-api';
+import { getAllProducts } from '../../api/Product-api';
 
 const Navbar = ({ onCartClick }) => {
   const navigate = useNavigate();
@@ -18,36 +30,96 @@ const Navbar = ({ onCartClick }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProducts, setFilteredProducts] = useState([]);
 
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const wishlistItems = useSelector((state) => state.wishlist.items);
+  const cartCount = useSelector((state) => state.cart.count);
+  const { isAuthenticated, userName } = useSelector((state) => state.auth);
 
-  const handleLogout = async () => {
+  const fetchCategories = async () => {
+    setLoading(true);
     try {
-      await logoutUser();
-      authStorage.removeToken();
-      dispatch(logout());
-      toast.success('Logged out successfully');
-      navigate(paths.home);
-    } catch (err) {
-      // Even if API fails, we should clear local state
-      authStorage.removeToken();
-      dispatch(logout());
-      navigate(paths.login);
+      const res = await getAllCategories();
+      if (res.success) {
+        const categoriesData = Array.isArray(res.data)
+          ? res.data
+          : (res.data?.categories || res.categories || []);
+
+        const formattedCategories = categoriesData.map(cat => ({
+          name: cat.name || cat.categoryName,
+          path: `/category/${cat._id || cat.id}`
+        }));
+
+        setCategories(formattedCategories);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchAllProducts = async () => {
+    try {
+      const res = await getAllProducts();
+      if (res.success) {
+        const productsData = Array.isArray(res.data)
+          ? res.data
+          : (res.data?.products || res.products || []);
+        setAllProducts(productsData);
+      }
+    } catch (error) {
+      console.error("Error fetching products for search:", error);
     }
   };
 
-  const searchResults = [
-    "Fresh Tomato",
-    "Fresh Potato",
-    "Paper Boat Swing+ Slurpy Mango Juicier Drink, 250 ml Pet Bottle",
-    "DABUR Real Masala Guava Fruit Nectar Juice",
-    "Klaas River Salmon Fillets 500 g| Frozen",
-    "Fresh Eggs, Packs"
-  ];
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    if (query.trim() === '') {
+      setFilteredProducts([]);
+      return;
+    }
+
+    const filtered = allProducts.filter(product => 
+      product.name?.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 10); // Limit to 10 results
+    
+    setFilteredProducts(filtered);
+    setIsDropdownOpen(true);
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchCartCount());
+      dispatch(fetchCartItems());
+    }
+    fetchCategories();
+    fetchAllProducts();
+    
+    // Listen for custom cart update events (for backward compatibility if needed)
+    const handleCartUpdateEvent = () => {
+      dispatch(fetchCartCount());
+    };
+    window.addEventListener('cartUpdated', handleCartUpdateEvent);
+    return () => window.removeEventListener('cartUpdated', handleCartUpdateEvent);
+  }, [isAuthenticated, dispatch]);
+
+  const handleLogout = () => {
+    authStorage.removeToken();
+    dispatch(logout());
+    toast.success('Logged out successfully');
+    navigate(paths.home);
+  };
+
 
   // Dynamic Navigation Links
-  const navLinks = [
+  const navLinks = categories.length > 0 ? categories : [
     { name: "Snacks", path: paths.snacks },
     { name: "Groceries", path: paths.groceries },
     { name: "Fruits", path: paths.fruits },
@@ -56,7 +128,7 @@ const Navbar = ({ onCartClick }) => {
 
   return (
     <div className='w-full bg-white border-b border-[var(--border-color)] sticky top-0 z-[100]'>
-        <div className=' mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4'>
+        <div className='  px-4 md:px-4 py-3 flex items-center justify-between gap-4'>
             
             {/* Left Section: Logo */}
             <div onClick={() => navigate(paths.home)} className='flex-shrink-0 cursor-pointer'>
@@ -71,8 +143,12 @@ const Navbar = ({ onCartClick }) => {
                 >
                     <Input 
                       className='flex-1 px-4 md:px-6 py-1 text-[var(--text-main)] bg-transparent text-sm md:text-base placeholder-[var(--text-light)]' 
-                      placeholder='Search...' 
-                      onFocus={() => setIsDropdownOpen(true)}
+                      placeholder='Search products...' 
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      onFocus={() => {
+                        if (searchQuery.trim() !== '') setIsDropdownOpen(true);
+                      }}
                       onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
                     />
                     
@@ -91,21 +167,32 @@ const Navbar = ({ onCartClick }) => {
                     <div className='absolute top-[110%] left-0 right-0 mt-2 bg-[var(--dropdown-bg)] rounded-xl shadow-2xl z-50 py-2 border border-gray-800 text-white'>
                         <div className="absolute -top-2 right-[100px] w-4 h-4 bg-[var(--dropdown-bg)] transform rotate-45 border-t border-l border-gray-800"></div>
                         <div className='relative z-10 max-h-[400px] overflow-y-auto custom-scrollbar'>
-                            {searchResults.map((item, index) => (
+                            {filteredProducts.length > 0 ? (
+                              filteredProducts.map((product, index) => (
                                 <div 
-                                    key={index} 
+                                    key={product._id || index} 
+                                    onClick={() => {
+                                      navigate(`/product/${product._id}`);
+                                      setIsDropdownOpen(false);
+                                      setSearchQuery('');
+                                    }}
                                     className='px-6 py-3 hover:bg-[var(--dropdown-hover)] cursor-pointer text-sm font-medium text-[var(--text-on-dark)] transition-colors border-b border-gray-800/50 last:border-none'
                                 >
-                                    {item}
+                                    {product.name}
                                 </div>
-                            ))}
+                              ))
+                            ) : (
+                              <div className='px-6 py-4 text-sm text-gray-400'>
+                                No products found
+                              </div>
+                            )}
                         </div>
                     </div>
                 )}
             </div>
 
             {/* Desktop Navigation Links (Hidden on Tablet/Mobile) */}
-            <div className='hidden lg:flex items-center gap-8'>
+            <div className='hidden lg:flex items-center gap-5'>
                 {navLinks.map((link, index) => (
                     <div 
                       key={index} 
@@ -117,8 +204,8 @@ const Navbar = ({ onCartClick }) => {
                 ))}
             </div>
             
-            {/* Right Section: Icons */}
-            <div className='flex items-center gap-3 md:gap-6 flex-shrink-0'>
+            {/* Right Section: Icons */}  
+            <div className='flex items-center gap-3 flex-shrink-0'>
                 {/* Search Icon - Mobile Only */}
                 <button className='flex md:hidden text-[var(--text-color)] hover:text-[var(--primary-color)] transition-colors cursor-pointer'>
                     <BsSearch size={22} />
@@ -127,6 +214,19 @@ const Navbar = ({ onCartClick }) => {
                 {/* Building / Store Icon */}
                 <button className='text-[var(--text-color)] hover:text-[var(--primary-color)] transition-colors cursor-pointer'>
                     <BsBuildings size={24} />
+                </button>
+
+                {/* Wishlist Icon */}
+                <button 
+                  onClick={() => navigate(paths.profileWishlist)}
+                  className='text-[var(--text-color)] hover:text-[var(--primary-color)] transition-colors cursor-pointer flex items-center justify-center relative group'
+                >
+                    <BsHeart size={22} />
+                    {wishlistItems.length > 0 && (
+                        <span className='absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4.5 w-4.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-110 transition-transform'>
+                            {wishlistItems.length}
+                        </span>
+                    )}
                 </button>
 
                 {/* Cart Icon with Dynamic Badge */}
@@ -160,18 +260,18 @@ const Navbar = ({ onCartClick }) => {
                             <div className="absolute top-[120%] right-0 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="px-4 py-2 border-b border-gray-50 mb-1">
                                     <p className="text-xs text-gray-500">Signed in as</p>
-                                    <p className="text-sm font-bold text-gray-900 truncate">{user?.firstName || 'User'}</p>
+                                    <p className="text-sm font-bold text-gray-900 truncate">{userName || 'User'}</p>
                                 </div>
-                                {/* <button 
+                                <button 
                                     onClick={() => {
-                                        navigate('/profile');
+                                        navigate(paths.profile);
                                         setIsUserDropdownOpen(false);
                                     }}
                                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
                                 >
-                                    <BsPerson size={16} />
+                                    <BsPerson size={16} />  
                                     Your Profile
-                                </button> */}
+                                </button>
                                 <button 
                                     onClick={() => {
                                         handleLogout();

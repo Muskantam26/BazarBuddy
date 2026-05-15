@@ -1,9 +1,47 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BsCart3, BsHeart } from 'react-icons/bs';
+import { BsCart3, BsCartCheck, BsHeart, BsHeartFill } from 'react-icons/bs';
+import { useDispatch, useSelector } from 'react-redux';
+import { toggleWishlist } from '../../redux/slices/wishlistSlice';
+import { toggleSidebar, addItemOptimistically } from '../../redux/slices/cartSlice';
 
-const ProductCardList = ({ id, image, tag, name, description, price, oldPrice, onCartClick, onWishlistClick }) => {
+const ProductCardList = (props) => {
+  const { id, image, tag, name, description, price, oldPrice, onCartClick, onWishlistClick } = props;
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const wishlistItems = useSelector((state) => state.wishlist.items);
+  const cartItems = useSelector((state) => state.cart.items);
+  const isInWishlist = wishlistItems.some((item) => item._id === id || item.id === id);
+  const isInCart = cartItems.some((item) => (item.productId?._id || item.productId || item.id) === (id));
+
+  const handleCartClick = (e) => {
+    e.stopPropagation();
+    if (isInCart) {
+      dispatch(toggleSidebar(true));
+    } else if (onCartClick) {
+      onCartClick();
+      dispatch(addItemOptimistically(id));
+    }
+  };
+
+  const handleWishlistClick = (e) => {
+    e.stopPropagation();
+    if (onWishlistClick) {
+      onWishlistClick();
+    } else {
+      // Create a compatible object for toggleWishlist
+      const product = {
+        _id: id,
+        images: [image],
+        name,
+        sellingPrice: price,
+        mrp: oldPrice,
+        longDescription: description,
+        tag
+      };
+      dispatch(toggleWishlist(product));
+    }
+  };
 
   const getTagColor = (tag) => {
     switch (tag?.toLowerCase()) {
@@ -53,27 +91,35 @@ const ProductCardList = ({ id, image, tag, name, description, price, oldPrice, o
         <div className="mt-auto pt-4 flex flex-wrap items-center justify-between gap-4 border-t border-gray-50">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-extrabold text-[var(--text-main)]">
-              ${price}
+              ₹{price}
             </span>
             {oldPrice && (
               <span className="text-sm text-[var(--text-light)] line-through">
-                ${oldPrice}
+                ₹{oldPrice}
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={onWishlistClick}
-              className="p-2.5 rounded-full bg-[var(--bg-soft)] text-[var(--text-light)] hover:bg-[var(--bg-soft)] hover:text-red-500 transition-all duration-300 shadow-sm"
+              onClick={handleWishlistClick}
+              className={`p-2.5 rounded-full bg-[var(--bg-soft)] transition-all duration-300 shadow-sm ${
+                isInWishlist ? 'text-red-500' : 'text-[var(--text-light)] hover:text-red-500'
+              }`}
+              aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
             >
-              <BsHeart size={20} />
+              {isInWishlist ? <BsHeartFill size={20} /> : <BsHeart size={20} />}
             </button>
             <button
-              onClick={onCartClick}
-              className="p-3 rounded-full bg-[var(--primary-color)] text-white hover:bg-[var(--primary-dark)] transition-all duration-300 shadow-lg shadow-green-100 flex items-center justify-center"
+              onClick={handleCartClick}
+              className={`p-3 rounded-full transition-all duration-300 shadow-lg flex items-center justify-center ${
+                isInCart 
+                  ? 'bg-orange-500 text-white shadow-orange-100' 
+                  : 'bg-[var(--primary-color)] text-white hover:bg-[var(--primary-dark)] shadow-green-100'
+              }`}
+              aria-label={isInCart ? "Go to cart" : "Add to cart"}
             >
-              <BsCart3 size={20} />
+              {isInCart ? <BsCartCheck size={20} /> : <BsCart3 size={20} />}
             </button>
           </div>
         </div>

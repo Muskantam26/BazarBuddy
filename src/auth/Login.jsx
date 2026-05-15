@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import { FiUser, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { loginStart, loginSuccess, loginFailure } from '../redux/slices/authSlice';
 import { startLoading, stopLoading } from '../redux/slices/loadingSlice';
 import authStorage from '../utils/authStorage';
@@ -11,10 +12,11 @@ import { loginUser } from '../api/User-api';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    userIdOrEmail: '',
     password: '',
     rememberMe: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -36,14 +38,21 @@ const Login = () => {
 
     try {
       const res = await loginUser({
-        email: formData.email,
+        userId: formData.userIdOrEmail,
         password: formData.password
       });
 
       if (res.success) {
-        authStorage.setToken(res.token);
-        dispatch(loginSuccess({ user: res.user, token: res.token }));
-        navigate(paths.home);
+        const token = res.token || res.data?.token;
+        const user = res.user || res.data?.user || res.data;
+        
+        if (token) {
+          authStorage.setToken(token);
+          dispatch(loginSuccess({ user, token }));
+          navigate(paths.home);
+        } else {
+          dispatch(loginFailure(res.message || 'Login failed: Token missing'));
+        }
       } else {
         dispatch(loginFailure(res.message || 'Invalid email or password'));
       }
@@ -69,42 +78,59 @@ const Login = () => {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Email Address <span className="text-red-500">*</span>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+              User ID / Email
             </label>
-            <input
-              type="email"
-              name="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Greentic@Example.Com"
-              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-400"
-            />
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <FiUser className="text-gray-400 group-focus-within:text-[var(--primary-color)] transition-colors text-xl" />
+              </div>
+              <input
+                type="text"
+                name="userIdOrEmail"
+                required
+                value={formData.userIdOrEmail}
+                onChange={handleChange}
+                placeholder="SSI-XXXX"
+                className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:bg-white focus:border-transparent transition-all placeholder:text-gray-400 font-medium"
+              />
+            </div>
           </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="block text-sm font-semibold text-gray-700">
-                Password <span className="text-red-500">*</span>
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Password
               </label>
               <Link
                 to="/forgot-password"
-                className="text-xs font-medium text-[var(--primary-color)] hover:underline opacity-80"
+                className="text-xs font-bold text-[var(--primary-color)] hover:underline"
               >
-                Forgot password?
+                Forgot?
               </Link>
             </div>
-            <input
-              type="password"
-              name="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••••••••••••••"
-              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-400"
-            />
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <FiLock className="text-gray-400 group-focus-within:text-[var(--primary-color)] transition-colors text-xl" />
+              </div>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:bg-white focus:border-transparent transition-all placeholder:text-gray-400 font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <FiEyeOff className="text-xl" /> : <FiEye className="text-xl" />}
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center">

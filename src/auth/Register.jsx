@@ -6,12 +6,14 @@ import { startLoading, stopLoading } from '../redux/slices/loadingSlice';
 import authStorage from '../utils/authStorage';
 import Button1 from '../components/ui/Button1';
 import paths from '../path/path';
-import { sendOtp, verifyOtp, registerUser } from '../api/User-api';
+import { registerUser } from '../api/User-api';
 import toast from 'react-hot-toast';
 
 
 const Register = () => {
   const [formData, setFormData] = useState({
+    sponsorId: '',
+    placementPosition: '', // 'left' or 'right'
     fullName: '',
     username: '',
     email: '',
@@ -20,10 +22,6 @@ const Register = () => {
     confirmPassword: '',
     agreeTerms: false,
   });
-
-  const [otp, setOtp] = useState('');
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [isOtpVerified, setIsOtpVerified] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -38,57 +36,10 @@ const Register = () => {
     }));
   };
 
-  const handleSendOtp = async () => {
-    if (!formData.email) {
-      toast.error('Please enter your email first');
-      return;
-    }
 
-    dispatch(startLoading());
-    try {
-      const res = await sendOtp({ email: formData.email });
-      if (res.success) {
-        setShowOtpInput(true);
-        toast.success('OTP sent to your email');
-      } else {
-        toast.error(res.message || 'Failed to send OTP');
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || 'Failed to send OTP');
-    } finally {
-      dispatch(stopLoading());
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otp) {
-      toast.error('Please enter the OTP');
-      return;
-    }
-
-    dispatch(startLoading());
-    try {
-      const res = await verifyOtp({ email: formData.email, otp });
-      if (res.success) {
-        setIsOtpVerified(true);
-        toast.success('Email verified successfully');
-      } else {
-        toast.error(res.message || 'Invalid OTP');
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || 'Verification failed');
-    } finally {
-      dispatch(stopLoading());
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!isOtpVerified) {
-      toast.error('Please verify your email with OTP first');
-      return;
-    }
 
     if (formData.password !== formData.confirmPassword) {
       dispatch(loginFailure('Passwords do not match'));
@@ -100,18 +51,18 @@ const Register = () => {
 
     try {
       const res = await registerUser({
-        fullName: formData.fullName,
-        username: formData.username,
+        name: formData.fullName,
         email: formData.email,
-        mobile: formData.mobile,
-        password: formData.password
+        phone: formData.mobile,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        position: formData.placementPosition,
+        sponsorId: formData.sponsorId
       });
 
       if (res.success) {
-        authStorage.setToken(res.token);
-        dispatch(loginSuccess({ user: res.user, token: res.token }));
-        toast.success('Registration successful!');
-        navigate(paths.login);
+        toast.success(res.message || 'Registration successful! OTP sent to your email.');
+        navigate(paths.verifyOtp, { state: { email: formData.email } });
       } else {
         dispatch(loginFailure(res.message || 'Registration failed'));
       }
@@ -136,6 +87,58 @@ const Register = () => {
               {error}
             </div>
           )}
+
+          {/* Sponsor Information */}
+          <section className="p-6 bg-gray-50/50 rounded-xl border border-gray-100">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-red-500 uppercase tracking-wider mb-2">
+                  Sponsor / Referral ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="sponsorId"
+                  required
+                  value={formData.sponsorId}
+                  onChange={handleChange}
+                  placeholder="e.g. COL-8392"
+                  className="w-full px-5 py-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-300 text-lg font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                  Placement Position <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, placementPosition: 'left' }))}
+                    className={`py-4 px-6 rounded-xl border-2 font-bold uppercase tracking-wide transition-all ${
+                      formData.placementPosition === 'left'
+                        ? 'border-[var(--primary-color)] bg-[var(--primary-color)] text-white shadow-lg shadow-emerald-100'
+                        : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'
+                    }`}
+                  >
+                    Left Leg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, placementPosition: 'right' }))}
+                    className={`py-4 px-6 rounded-xl border-2 font-bold uppercase tracking-wide transition-all ${
+                      formData.placementPosition === 'right'
+                        ? 'border-[var(--primary-color)] bg-[var(--primary-color)] text-white shadow-lg shadow-emerald-100'
+                        : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'
+                    }`}
+                  >
+                    Right Leg
+                  </button>
+                </div>
+                {/* Hidden input for form validation if needed */}
+                <input type="hidden" name="placementPosition" value={formData.placementPosition} required />
+              </div>
+            </div>
+          </section>
 
           {/* Personal Information */}
           <section>
@@ -180,56 +183,17 @@ const Register = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Email Address <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    name="email"
-                    required
-                    disabled={isOtpVerified}
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Shop@Company.Com"
-                    className="flex-grow px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-300 disabled:bg-gray-50"
-                  />
-                  {!isOtpVerified && (
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-[var(--primary-color)] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
-                    >
-                      {showOtpInput ? 'Resend OTP' : 'Send OTP'}
-                    </button>
-                  )}
-                </div>
-                {isOtpVerified && <p className="mt-1.5 text-xs text-green-600 font-medium">Email Verified ✓</p>}
-                {!isOtpVerified && <p className="mt-1.5 text-xs text-gray-500">We'll send an OTP to verify your email</p>}
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Shop@Company.Com"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-300"
+                />
+                <p className="mt-1.5 text-xs text-gray-500">We'll send an OTP to verify your email after registration</p>
               </div>
-
-              {showOtpInput && !isOtpVerified && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Enter OTP <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter 6-digit OTP"
-                      className="flex-grow px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyOtp}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition-colors disabled:opacity-50"
-                    >
-                      Verify OTP
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">

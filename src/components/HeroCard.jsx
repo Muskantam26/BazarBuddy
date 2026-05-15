@@ -16,7 +16,7 @@ const HeroCard = ({ slides = [], showArrows = false }) => {
   };
 
   return (
-    <div className=' w-full h-full  py-3 relative group'>
+    <div className=' w-full h-full px-4 py-3 relative group'>
       <div className='w-full h-full relative overflow-hidden rounded-xl bg-[var(--hero-bg)]'>
 
         {/* Slider Track */}

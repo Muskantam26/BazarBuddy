@@ -35,7 +35,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         </button>
 
         {/* Page Numbers */}
-        {getPageNumbers().map((page, index) => (
+      {getPageNumbers().map((page, index) => (
           page === '...' ? (
             <span key={`dots-${index}`} className="text-gray-400 px-2 font-bold select-none">
               ...

@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowRight } from 'react-icons/hi';
 
-const SectionHeader = ({ title, linkText, linkPath, children }) => {
+const SectionHeader = ({ title, linkText, linkPath, onClick, children }) => {
   const navigate = useNavigate();
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -13,7 +13,7 @@ const SectionHeader = ({ title, linkText, linkPath, children }) => {
         {children}
         {linkText && (
           <div
-            onClick={() => linkPath && navigate(linkPath)}
+            onClick={onClick}
             className="flex items-center gap-1 text-[var(--primary-color)] hover:text-[var(--primary-dark)] font-medium transition-colors group ml-2 cursor-pointer"
           >
             {linkText}
