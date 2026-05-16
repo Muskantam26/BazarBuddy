@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Input from '../ui/Input';
-import { addUserAddressApi } from '../../api/Address-api';
 import toast from 'react-hot-toast';
 
 const AddressForm = ({ onSuccess, onCancel, showCancel = true }) => {
@@ -35,38 +34,12 @@ const AddressForm = ({ onSuccess, onCancel, showCancel = true }) => {
         }
 
         setIsSaving(true);
-        try {
-            const payload = {
-                shipping: {
-                    fullName: formData.fullName,
-                    phone: formData.phone,
-                    addressLine1: formData.addressLine1,
-                    addressLine2: formData.addressLine2,
-                    city: formData.city,
-                    state: formData.state,
-                    postalCode: formData.postalCode,
-                    country: "India",
-                },
-                billing: {
-                    fullName: formData.fullName,
-                    phone: formData.phone,
-                    addressLine1: formData.addressLine1,
-                    addressLine2: formData.addressLine2,
-                    city: formData.city,
-                    state: formData.state,
-                    postalCode: formData.postalCode,
-                    country: "India",
-                },
-                type: addressType,
-            };
-            await addUserAddressApi(payload);
-            toast.success("Address saved successfully");
-            if (onSuccess) onSuccess();
-        } catch (err) {
-            toast.error(err?.response?.data?.message || "Failed to save address");
-        } finally {
+        // Mocking local save
+        setTimeout(() => {
             setIsSaving(false);
-        }
+            toast.success("Address saved successfully (Mock)");
+            if (onSuccess) onSuccess(formData);
+        }, 800);
     };
 
     return (

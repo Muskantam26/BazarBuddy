@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { FiMail, FiCheckCircle } from 'react-icons/fi';
 import { startLoading, stopLoading } from '../redux/slices/loadingSlice';
-import { verifyOtp } from '../api/User-api';
 import Button1 from '../components/ui/Button1';
 import paths from '../path/path';
 import toast from 'react-hot-toast';
@@ -32,19 +31,12 @@ const VerifyOtp = () => {
     }
 
     dispatch(startLoading());
-    try {
-      const res = await verifyOtp({ email, otp });
-      if (res.success) {
-        toast.success(res.message || 'Email verified successfully! You can now log in.');
+    // Mock verification
+    setTimeout(() => {
+        dispatch(stopLoading());
+        toast.success('Email verified successfully! (Mock)');
         navigate(paths.login);
-      } else {
-        toast.error(res.message || 'Invalid OTP. Please try again.');
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || 'Verification failed');
-    } finally {
-      dispatch(stopLoading());
-    }
+    }, 1500);
   };
 
   return (

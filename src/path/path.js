@@ -1,3 +1,7 @@
+import AffiliateLink from "../components/profile/AffiliateLink";
+import AffiliateTransactions from "../components/profile/AffiliateTransactions";
+import Payouts from "../components/profile/Payouts";
+
 const paths = {
     home: '/',
     snacks: '/snacks',
@@ -19,7 +23,8 @@ const paths = {
     profileAddresses: '/profile/addresses',
     profileWishlist: '/profile/wishlist',
     profileTickets: '/profile/tickets',
-    orderDetails: '/profile/orders/:id'
+    orderDetails: '/profile/orders/:id',
+  
 
 };
 

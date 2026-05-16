@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaChevronLeft, FaCircleCheck, FaCircle, FaDownload, FaMessage } from 'react-icons/fa6';
-import { getMyDashboardOrdersApi } from '../../api/Order-api';
 import Button1 from '../ui/Button1';
-import toast from 'react-hot-toast';
 import paths from '../../path/path';
+import { products as mockProducts } from '../../data/mockData';
 
 const OrderDetails = () => {
     const { id } = useParams();
@@ -13,25 +12,46 @@ const OrderDetails = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchOrderDetails = async () => {
-            try {
-                setLoading(true);
-                // Since individual order API doesn't exist, we fetch from the list
-                const res = await getMyDashboardOrdersApi({ page: 1, limit: 100 });
-                if (res.success || res.status === 'success') {
-                    const orders = res.data?.orders || res.data || [];
-                    const foundOrder = orders.find(o => o._id === id);
-                    setOrder(foundOrder);
+        setLoading(true);
+        // Mock data
+        const mockOrder = {
+            _id: id,
+            orderId: "ORD-12345",
+            createdAt: new Date().toISOString(),
+            status: "Delivered",
+            grandTotal: 1250.00,
+            spv: 125,
+            shippingAddress: {
+                fullName: "Mock User",
+                address: "123 Mock Street",
+                city: "Mock City",
+                state: "Mock State",
+                pincode: "123456",
+                mobile: "1234567890",
+                addressType: "Home"
+            },
+            items: [
+                {
+                    _id: "item1",
+                    productName: "Fresh Onion",
+                    quantity: 2,
+                    unitPrice: 76.00,
+                    totalPrice: 152.00,
+                    image: "https://via.placeholder.com/150",
+                    product: {
+                        name: "Fresh Onion",
+                        brand: "Local Farm"
+                    }
                 }
-            } catch (err) {
-                console.error("Error fetching order details:", err);
-                toast.error("Failed to load order details");
-            } finally {
-                setLoading(false);
-            }
+            ]
         };
-        fetchOrderDetails();
+
+        setTimeout(() => {
+            setOrder(mockOrder);
+            setLoading(false);
+        }, 500);
     }, [id]);
+
     if (loading) { 
         return (
             <div className="flex flex-col items-center justify-center p-20 bg-white rounded-2xl border border-gray-100">
@@ -50,10 +70,8 @@ const OrderDetails = () => {
         );
     }
 
-    const item = order.items?.[0] || {};
-    const product = item.product || {};
-    const address = order.shippingAddress || order.address || {};
     const status = order.orderStatus || order.status || 'Processing';
+    const address = order.shippingAddress || order.address || {};
 
     return (
         <div className="flex flex-col gap-6">
@@ -74,15 +92,22 @@ const OrderDetails = () => {
                     {/* Items Card */}
                     <div className="space-y-4">
                         {order.items?.map((item, index) => {
-                            const product = item.product || {};
+                            let product = item.product || {};
+                            
+                            // Fallback: resolve product details from mockData if missing
+                            if (!item.productImage && (!product.images || product.images.length === 0)) {
+                                const found = mockProducts.find(p => p.name === item.productName || p._id === item.productId || p.id === item.productId);
+                                if (found) product = found;
+                            }
+
                             return (
                                 <div key={item._id || index} className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
                                     <div className="p-6">
                                         <div className="flex gap-6">
                                             <div className="w-24 h-28 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 flex-shrink-0">
                                                 <img 
-                                                    src={item.productImage || product.images?.[0] || 'https://via.placeholder.com/150'} 
-                                                    alt={item.productName || product.name || 'Product'} 
+                                                    src={item.productImage || product.images?.[0] || product.image || 'https://via.placeholder.com/150'} 
+                                                    alt={item.productName || 'Product'} 
                                                     className="w-full h-full object-contain"
                                                 />
                                             </div>
@@ -93,7 +118,7 @@ const OrderDetails = () => {
                                                     </div>
                                                 </div>
                                                 <h2 className="text-lg font-medium text-gray-900 leading-tight">
-                                                    {item.productName || product.name}
+                                                    {item.productName}
                                                 </h2>
                                                 <div className="text-sm text-gray-500">
                                                     {item.variant && <span>Variant: {item.variant}, </span>}
@@ -132,12 +157,6 @@ const OrderDetails = () => {
                                             </div>
                                         )}
                                     </div>
-                                    {/* <div className="bg-gray-50/50 p-4 border-t border-gray-100 flex justify-center">
-                                        <button className="flex items-center gap-2 text-sm font-bold text-gray-700 hover:text-gray-900">
-                                            <FaMessage className="text-gray-400" />
-                                            Chat with us
-                                        </button>
-                                    </div> */}
                                 </div>
                             );
                         })}
@@ -192,7 +211,6 @@ const OrderDetails = () => {
                             <div className="flex justify-between text-xs text-gray-600">
                                 <div className="flex items-center gap-1">
                                     Points Earned
-                                    <span className="w-3 h-3 rounded-full border border-gray-400 text-[8px] flex items-center justify-center cursor-pointer">⌄</span>
                                 </div>
                                 <span>{order.spv || 0} SPV</span>
                             </div>
@@ -201,11 +219,6 @@ const OrderDetails = () => {
                                 <span className="text-sm font-bold text-gray-900">₹{order.grandTotal}</span>
                             </div>
                         </div>
-
-                        {/* <button className="w-full mt-6 py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
-                            <FaDownload className="text-xs text-gray-400" />
-                            Download Invoice
-                        </button> */}
                     </div>
                 </div>
             </div>

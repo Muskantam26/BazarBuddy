@@ -1,8 +1,7 @@
 import { FaTrash, FaCartPlus, FaChevronLeft } from 'react-icons/fa6';
 import { useDispatch, useSelector } from 'react-redux';
 import { removeFromWishlist } from '../../redux/slices/wishlistSlice';
-import { incrementCount } from '../../redux/slices/cartSlice';
-import { addToCart } from '../../api/Cart-api';
+import { incrementCount, addItemOptimistically } from '../../redux/slices/cartSlice';
 import Button1 from '../ui/Button1';
 import paths from '../../path/path';
 import toast from 'react-hot-toast';
@@ -15,24 +14,13 @@ const Wishlist = () => {
 
     const handleRemove = (id) => {
         dispatch(removeFromWishlist(id));
+        toast.success("Removed from wishlist");
     };
 
-    const handleAddToCart = async (product) => {
-        try {
-            const res = await addToCart(product._id, 1);
-            if (res.success) {
-                toast.success(res.message || `${product.name} added to cart!`);
-                // Instant update via Redux
-                dispatch(incrementCount(1));
-                // Trigger navbar update
-                window.dispatchEvent(new Event('cartUpdated'));
-            } else {
-                toast.error(res.message || "Failed to add to cart");
-            }
-        } catch (error) {
-            console.error("Add to cart error:", error);
-            toast.error(error?.response?.data?.message || "Something went wrong");
-        }
+    const handleAddToCart = (product) => {
+        toast.success(`${product.name} added to cart! (Mock)`);
+        dispatch(addItemOptimistically(product._id || product.id));
+        window.dispatchEvent(new Event('cartUpdated'));
     };
 
     return (
@@ -49,10 +37,10 @@ const Wishlist = () => {
                     </thead>
                     <tbody className="divide-y divide-[var(--border-color)]">
                         {wishlistItems.length > 0 ? (
-                            wishlistItems.map((item) => (
-                                <tr key={item._id} className="hover:bg-gray-50 transition-colors">
+                            wishlistItems.map((item, index) => (
+                                <tr key={item._id || item.id || `wishlist-${index}`} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate(`/product/${item._id}`)}>
+                                        <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate(`/product/${item._id || item.id}`)}>
                                             <div className="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden border border-[var(--border-color)]">
                                                 <img 
                                                     src={Array.isArray(item.images) ? item.images[0] : (item.images || item.image)} 
@@ -82,8 +70,8 @@ const Wishlist = () => {
                                                 <FaCartPlus /> Add to Cart
                                             </Button1>
                                             <button 
-                                                onClick={() => handleRemove(item._id)}
-                                                className="flex items-center gap-1.5 text-[var(--red-color)] hover:underline text-sm font-medium"
+                                                onClick={() => handleRemove(item._id || item.id)}
+                                                className="flex items-center gap-1.5 text-red-500 hover:underline text-sm font-medium"
                                             >
                                                 <FaTrash className="text-xs" /> Remove
                                             </button>

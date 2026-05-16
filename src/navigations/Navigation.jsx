@@ -51,6 +51,7 @@ const Navigation = () => {
                     <Route path="addresses" element={<ManageAddresses />} />
                     <Route path="wishlist" element={<Wishlist />} />
                     <Route path="tickets" element={<SupportTickets />} />
+                    
                 </Route>
             </Route>
         </Routes>

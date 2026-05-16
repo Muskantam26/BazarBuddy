@@ -8,8 +8,8 @@ import authStorage from "../../utils/authStorage";
 
 
 export const MainContent = {
-  appName: "Greentic",
-  appFullName: "Geeentic",
+  appName: "BazarBuddy",
+  appFullName: "BazarBuddy",
   appLogo: appLogo,
 //   appLogoClr: appFooterLogo,
   appFavicon: appFavicon,
@@ -32,8 +32,8 @@ export const backendConfig = {
 //   base:'http://192.168.1.5:5050/api',
 //   origin:'http://192.168.1.5:5050',
 
-  base: import.meta.env.VITE_API_BASE_URL,
-  origin: import.meta.env.VITE_API_ORIGIN,
+  base: '', // Removed .env dependency
+  origin: '', // Removed .env dependency
 };
 //  console.log(backendConfig);
 

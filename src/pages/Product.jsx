@@ -1,104 +1,171 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useParams, useLocation } from 'react-router-dom'
 import PageHeader from '../components/ui/PageHeader'
 import FilterSidebar from '../components/product/FilterSidebar'
 import ProductCard from '../components/home/ProductCard'
 import ProductCardList from '../components/product/ProductCardList'
 import Pagination from '../components/ui/Pagination'
-import { HiChevronLeft, HiChevronRight } from 'react-icons/hi'
 import { HiOutlineChevronDown } from 'react-icons/hi'
-import { BiMenu } from 'react-icons/bi'
 import { TfiMenuAlt } from "react-icons/tfi";
 import { TfiLayoutGrid2Alt } from "react-icons/tfi";
 import { FiFilter } from "react-icons/fi";
-import { getAllProducts } from '../api/Product-api'
-import { addToCart } from '../api/Cart-api'
+import { products as mockProducts } from '../data/mockData'
 import { useDispatch } from 'react-redux'
 import { incrementCount, addItemOptimistically } from '../redux/slices/cartSlice'
-import { backendConfig } from '../constants/constant/Maincontent'
 import toast from 'react-hot-toast'
 
-
-
 const Product = () => {
+    const { id: categoryParam } = useParams();
+    const location = useLocation();
+    
     const [sortBy, setSortBy] = useState("All");
     const [isSortOpen, setIsSortOpen] = useState(false);
     const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
     const [currentPage, setCurrentPage] = useState(1);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const itemsPerPage = 9;
+    
+    // Filter states
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [selectedBrands, setSelectedBrands] = useState([]);
+    const [priceRange, setPriceRange] = useState(2000);
+    
+    const dispatch = useDispatch();
+
+    // Update selected category or search based on URL param or pathname
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const searchTerm = queryParams.get('search');
+        const path = location.pathname.split('/').pop();
+        const knownCategories = ["Snacks", "Groceries", "Fruits", "Beverages", "Vegetables", "Eggs", "Dairy", "Seafood"];
+        
+        if (searchTerm) {
+            setSelectedCategories([]);
+            setSelectedBrands([]);
+            // We'll handle filtering by search term in useMemo
+            setCurrentPage(1);
+        } else if (categoryParam) {
+            const categoryName = categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1).toLowerCase();
+            setSelectedCategories([categoryName]);
+            setCurrentPage(1);
+        } else {
+            const matchedCategory = knownCategories.find(cat => cat.toLowerCase() === path.toLowerCase());
+            if (matchedCategory) {
+                setSelectedCategories([matchedCategory]);
+                setCurrentPage(1);
+            } else if (location.pathname === '/products') {
+                setSelectedCategories([]);
+                setSelectedBrands([]);
+                setPriceRange(2000);
+                setCurrentPage(1);
+            }
+        }
+    }, [categoryParam, location.pathname, location.search]);
 
     const sortOptions = [
         "All", "Featured", "Best selling", "Alphabetically, A-Z",
         "Alphabetically, Z-A", "Price, low to high", "Price, high to low"
     ];
 
-    const fetchProducts = async () => {
-        setLoading(true);
+    const handleAddToCart = (productId, productName) => {
+        toast.success(`${productName} added to cart!`);
+        dispatch(incrementCount(1));
+        dispatch(addItemOptimistically(productId));
+        window.dispatchEvent(new Event('cartUpdated'));
+    };
 
-        try {
-            const res = await getAllProducts();
+    // Filtering Logic
+    const filteredProducts = useMemo(() => {
+        let result = [...mockProducts];
+        
+        const queryParams = new URLSearchParams(location.search);
+        const searchTerm = queryParams.get('search')?.toLowerCase();
 
-            // console.log("API Response:", res); 
-
-            if (res.success) {
-                // Handle different possible response structures  
-                const productsData = Array.isArray(res.data)
-                    ? res.data
-                    : (res.data?.products || res.products || []);
-
-                setProducts(Array.isArray(productsData) ? productsData : []);
-            } else {
-                toast.error(res.message || "Failed to fetch products");
-                setProducts([]); // Ensure it's an array even on failure
-            }
-        } catch (error) {
-            console.log("Error fetching products:", error);
-
-            toast.error(
-                error?.response?.data?.message ||
-                error.message ||
-                "Something went wrong"
+        // Filter by Search Term
+        if (searchTerm) {
+            result = result.filter(p => 
+                p.name.toLowerCase().includes(searchTerm) || 
+                p.category.toLowerCase().includes(searchTerm)
             );
-        } finally {
-            setLoading(false);
         }
-    };
 
-    const dispatch = useDispatch();
-
-    useEffect(() => {
-        fetchProducts();
-    }, []);
-
-    const handleAddToCart = async (productId, productName) => {
-        try {
-            const res = await addToCart(productId, 1);
-            if (res.success) {
-                toast.success(res.message || `${productName} added to cart!`);
-                dispatch(incrementCount(1));
-                dispatch(addItemOptimistically(productId));
-                window.dispatchEvent(new Event('cartUpdated'));
-            } else {
-                toast.error(res.message || "Failed to add to cart");
-            }
-        } catch (error) {
-            console.error("Add to cart error:", error);
-            toast.error(error?.response?.data?.message || "Something went wrong");
+        // Filter by Category
+        if (selectedCategories.length > 0) {
+            result = result.filter(p => selectedCategories.includes(p.category));
         }
-    };
+
+        // Filter by Brand
+        if (selectedBrands.length > 0) {
+            result = result.filter(p => selectedBrands.includes(p.brand));
+        }
+
+        // Filter by Price
+        result = result.filter(p => parseFloat(p.price) <= priceRange);
+
+        // Sorting
+        switch (sortBy) {
+            case "Alphabetically, A-Z":
+                result.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case "Alphabetically, Z-A":
+                result.sort((a, b) => b.name.localeCompare(a.name));
+                break;
+            case "Price, low to high":
+                result.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+                break;
+            case "Price, high to low":
+                result.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+                break;
+            default:
+                break;
+        }
+
+        return result;
+    }, [selectedCategories, selectedBrands, priceRange, sortBy, location.search]);
 
     // Pagination Logic
-    const safeProducts = Array.isArray(products) ? products : [];
-    const totalPages = Math.ceil(safeProducts.length / itemsPerPage);
+    const itemsPerPage = 9;
+    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentProducts = safeProducts.slice(indexOfFirstItem, indexOfLastItem);
+    const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+
+    // Filter handlers
+    const handleCategoryChange = (category) => {
+        setSelectedCategories(prev => 
+            prev.includes(category) 
+                ? prev.filter(c => c !== category) 
+                : [...prev, category]
+        );
+        setCurrentPage(1);
+    };
+
+    const handleBrandChange = (brand) => {
+        setSelectedBrands(prev => 
+            prev.includes(brand) 
+                ? prev.filter(b => b !== brand) 
+                : [...prev, brand]
+        );
+        setCurrentPage(1);
+    };
+
+    const handlePriceChange = (value) => {
+        setPriceRange(value);
+        setCurrentPage(1);
+    };
+
+    const handleClearFilters = () => {
+        setSelectedCategories([]);
+        setSelectedBrands([]);
+        setPriceRange(2000);
+        setCurrentPage(1);
+    };
+
+    const queryParams = new URLSearchParams(location.search);
+    const searchTerm = queryParams.get('search');
 
     return (
         <div className="bg-gray-50/50 min-h-screen">
-            <PageHeader title="Product List" />
+            <PageHeader title={searchTerm ? `Search Results for "${searchTerm}"` : (categoryParam ? `${categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1)}` : "All Products")} />
 
             <div className="mx-auto px-4 py-10 ">
                 <div className="flex flex-col lg:flex-row gap-8">
@@ -117,7 +184,16 @@ const Product = () => {
                         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                         h-full lg:h-auto
                     `}>
-                        <FilterSidebar onClose={() => setIsSidebarOpen(false)} />
+                        <FilterSidebar 
+                            selectedCategories={selectedCategories}
+                            onCategoryChange={handleCategoryChange}
+                            selectedBrands={selectedBrands}
+                            onBrandChange={handleBrandChange}
+                            priceRange={priceRange}
+                            onPriceChange={handlePriceChange}
+                            onClearFilters={handleClearFilters}
+                            onClose={() => setIsSidebarOpen(false)} 
+                        />
                     </div>
 
                     {/* Product List Section */}
@@ -134,7 +210,7 @@ const Product = () => {
                                 </button>
 
                                 <h2 className="text-xl font-extrabold text-gray-900">
-                                    All Products ({safeProducts.length})
+                                    Products Found ({filteredProducts.length})
                                 </h2>
                             </div>
 
@@ -154,8 +230,6 @@ const Product = () => {
                                         <TfiMenuAlt size={20} />
                                     </button>
                                 </div>
-
-
 
                                 {/* Custom Sort Dropdown */}
                                 <div className="relative min-w-[160px] sm:min-w-[180px]">
@@ -196,21 +270,16 @@ const Product = () => {
                             </div>
                         </div>
 
-
                         <hr className=" border-gray-200 w-full" />
                         {/* Product Display */}
-                        {loading ? (
-                            <div className="flex justify-center items-center min-h-[400px]">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-color)]"></div>
-                            </div>
-                        ) : products.length === 0 ? (
+                        {filteredProducts.length === 0 ? (
                             <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
-                                <p className="text-xl font-semibold">No products found</p>
+                                <p className="text-xl font-semibold">No products found matching your filters</p>
                                 <button
-                                    onClick={fetchProducts}
-                                    className="mt-4 text-[var(--primary-color)] hover:underline"
+                                    onClick={handleClearFilters}
+                                    className="mt-4 text-[var(--primary-color)] hover:underline font-bold"
                                 >
-                                    Try again
+                                    Clear all filters
                                 </button>
                             </div>
                         ) : viewMode === 'grid' ? (
@@ -236,11 +305,13 @@ const Product = () => {
                         )}
 
                         {/* Pagination */}
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={(page) => setCurrentPage(page)}
-                        />
+                        {totalPages > 1 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={(page) => setCurrentPage(page)}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

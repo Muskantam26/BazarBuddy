@@ -25,7 +25,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className={`w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center transition-all ${
+          className={`w-10 h-10 rounded-lg border cursor-pointer border-gray-200 flex items-center justify-center transition-all ${
             currentPage === 1 
             ? 'text-gray-300 cursor-not-allowed' 
             : 'text-gray-600 hover:bg-[var(--primary-color)] hover:text-white hover:border-[var(--primary-color)]'
@@ -44,7 +44,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
             <button
               key={page}
               onClick={() => onPageChange(page)}
-              className={`w-10 h-10 rounded-lg font-bold transition-all ${
+              className={`w-10 h-10 rounded-lg cursor-pointer font-bold transition-all ${
                 currentPage === page
                 ? 'bg-[var(--primary-color)] text-white shadow-md'
                 : 'border border-gray-200 text-gray-600 hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]'
@@ -59,7 +59,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         <button
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className={`w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center transition-all ${
+          className={`w-10 h-10 rounded-lg border cursor-pointer border-gray-200 flex items-center justify-center transition-all ${
             currentPage === totalPages 
             ? 'text-gray-300 cursor-not-allowed' 
             : 'text-gray-600 hover:bg-[var(--primary-color)] hover:text-white hover:border-[var(--primary-color)]'

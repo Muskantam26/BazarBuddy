@@ -1,34 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SectionHeader from '../ui/SectionHeader';
-import { getMyDashboardOrdersApi } from '../../api/Order-api';
 import OrderCard from './OrderCard';
 import paths from '../../path/path';
-import toast from 'react-hot-toast';
 
 const RecentOrders = () => {
     const navigate = useNavigate();
-    const [recentOrders, setRecentOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [recentOrders, setRecentOrders] = useState([
+        {
+            _id: "order1",
+            orderId: "ORD-12345",
+            createdAt: new Date().toISOString(),
+            status: "Delivered",
+            grandTotal: 1250.00,
+            items: [
+                { productName: "Fresh Onion", quantity: 2, sellingPrice: 152.00 }
+            ]
+        }
+    ]);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const fetchRecentOrders = async () => {
-            try {
-                const res = await getMyDashboardOrdersApi({ page: 1, limit: 5 });
-                if (res.success || res.status === 'success') {
-                    const ordersData = Array.isArray(res.data) 
-                        ? res.data 
-                        : (res.data?.orders || res.orders || []);
-                    setRecentOrders(ordersData);
-                }
-            } catch (err) {
-                console.error("Error fetching recent orders:", err);
-                toast.error("Failed to load recent orders");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchRecentOrders();
+        // Mock loading
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+        }, 500);
     }, []);
 
     return (

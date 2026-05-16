@@ -1,27 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import Button1 from '../ui/Button1';
-import { getUserAddressApi } from '../../api/Address-api';
 import toast from 'react-hot-toast';
 import AddressForm from '../address/AddressForm';
 
 const ManageAddresses = () => {
-    const [addresses, setAddresses] = useState([]);
+    const [addresses, setAddresses] = useState([
+        {
+            _id: "addr1",
+            type: "Home",
+            isDefault: true,
+            shipping: {
+              fullName: "Mock User",
+              addressLine1: "123 Mock Street",
+              city: "Mock City",
+              state: "Mock State",
+              postalCode: "123456",
+              phone: "1234567890"
+            }
+        }
+    ]);
     const [loading, setLoading] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
 
     const fetchAddresses = async () => {
-        try {
-            setLoading(true);
-            const response = await getUserAddressApi();
-            // Handle different response formats
-            const addressList = response?.data?.addresses || response?.addresses || (Array.isArray(response?.data) ? response.data : []);
-            setAddresses(addressList);
-        } catch (error) {
-            console.error("Error fetching addresses:", error);
-            toast.error("Failed to load addresses");
-        } finally {
+        setLoading(true);
+        // Mock delay
+        setTimeout(() => {
             setLoading(false);
-        }
+        }, 500);
     };
 
     useEffect(() => {
@@ -29,18 +35,22 @@ const ManageAddresses = () => {
     }, []);
 
     const handleSetDefault = (id) => {
-        // Placeholder for set default logic
-        toast.success("Address set as default");
+        setAddresses(prev => prev.map(addr => ({
+            ...addr,
+            isDefault: addr._id === id
+        })));
+        toast.success("Address set as default (Mock)");
     };
 
     const handleRemove = (id) => {
-        // Placeholder for remove logic
-        toast.success("Address removed successfully");
+        setAddresses(prev => prev.filter(addr => addr._id !== id));
+        toast.success("Address removed successfully (Mock)");
     };
 
     const handleAddSuccess = () => {
         setShowAddForm(false);
-        fetchAddresses();
+        toast.success("Address added successfully (Mock)");
+        // In a real mock we would add to state, but for now we just show success
     };
 
     return (

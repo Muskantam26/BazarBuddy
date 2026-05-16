@@ -2,18 +2,21 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCircle, FaStar } from 'react-icons/fa6';
 import paths from '../../path/path';
+import { products as mockProducts } from '../../data/mockData';
 
 const OrderCard = ({ order }) => {
     const navigate = useNavigate();
     
-    // Assuming the order object has the following structure based on common patterns
-    // and the data we saw in the components earlier.
-    // If there are multiple items, we show the first one or a summary.
-    // The user's image shows a single product card.
-    
     const item = order.items?.[0] || {};
-    const product = item.product || {};
-    const status = order.orderStatus || 'Processing';
+    let product = item.product || {};
+    
+    // Fallback: resolve product details from mockData if missing
+    if (!item.productImage && (!product.images || product.images.length === 0)) {
+        const found = mockProducts.find(p => p.name === item.productName || p._id === item.productId || p.id === item.productId);
+        if (found) product = found;
+    }
+    
+    const status = order.orderStatus || order.status || 'Processing';
     
     const getStatusColor = (status) => {
         switch (status.toLowerCase()) {
@@ -43,7 +46,7 @@ const OrderCard = ({ order }) => {
             {/* Product Image */}
             <div className="relative w-20 h-24 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
                 <img 
-                    src={item.productImage || product.images?.[0] || 'https://via.placeholder.com/150'} 
+                    src={item.productImage || product.images?.[0] || product.image || 'https://via.placeholder.com/150'} 
                     alt={item.productName || product.name || 'Product'} 
                     className="w-full h-full object-contain"
                 />

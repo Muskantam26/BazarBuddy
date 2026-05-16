@@ -2,14 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa6';
 import FilterDropdown from '../ui/FilterDropdown';
-import { getMyDashboardOrdersApi } from '../../api/Order-api';
 import OrderCard from './OrderCard';
-import toast from 'react-hot-toast';
 
 const OrderHistory = () => {
     const navigate = useNavigate();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [orders, setOrders] = useState([
+        {
+            _id: "order1",
+            orderId: "ORD-12345",
+            createdAt: new Date().toISOString(),
+            status: "Delivered",
+            grandTotal: 1250.00,
+            items: [
+                { productName: "Fresh Onion", quantity: 2, sellingPrice: 152.00 }
+            ]
+        },
+        {
+            _id: "order2",
+            orderId: "ORD-67890",
+            createdAt: new Date(Date.now() - 86400000).toISOString(),
+            status: "Processing",
+            grandTotal: 540.00,
+            items: [
+                { productName: "Fresh Tomato", quantity: 1, sellingPrice: 256.00 }
+            ]
+        }
+    ]);
+    const [loading, setLoading] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState("All Orders");
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -17,26 +36,11 @@ const OrderHistory = () => {
     const filterOptions = ["All Orders", "Placed", "Processing", "Delivered", "Cancelled", "Return", "Confirmed"];
 
     useEffect(() => {
-        const fetchOrders = async () => {
-            setLoading(true);
-            try {
-                const filter = selectedFilter === "All Orders" ? "" : selectedFilter;
-                const res = await getMyDashboardOrdersApi({ page, limit: 10, status: filter });
-                if (res.success || res.status === 'success') {
-                    const ordersData = Array.isArray(res.data) 
-                        ? res.data 
-                        : (res.data?.orders || res.orders || []);
-                    setOrders(ordersData);
-                    setTotalPages(res.data?.pagination?.totalPages || res.totalPages || res.data?.totalPages || 1);
-                }
-            } catch (err) {
-                console.error("Error fetching orders:", err);
-                toast.error("Failed to load order history");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrders();
+        setLoading(true);
+        // Mock loading
+        setTimeout(() => {
+            setLoading(false);
+        }, 500);
     }, [page, selectedFilter]);
 
     const handlePrev = () => setPage(p => Math.max(1, p - 1));

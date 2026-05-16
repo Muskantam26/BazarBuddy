@@ -8,10 +8,8 @@ import AccountDetails from '../components/profile/AccountDetails'
 import AffiliateLink from '../components/profile/AffiliateLink'
 import AffiliateTransactions from '../components/profile/AffiliateTransactions'
 import Payouts from '../components/profile/Payouts'
-import { getUserProfile } from '../api/User-api'
 import { useDispatch } from 'react-redux'
 import { setUser } from '../redux/slices/authSlice'
-import toast from 'react-hot-toast'
 
 const Profile = () => {
   const location = useLocation();
@@ -21,18 +19,17 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const response = await getUserProfile();
-        if (response.success) {
-          dispatch(setUser(response.data));
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-        toast.error("Failed to load profile details");
-      } finally {
+      setLoading(true);
+      // Mock profile data
+      dispatch(setUser({
+        name: "Mock User",
+        email: "user@example.com",
+        mobile: "1234567890",
+        kycStatus: "Verified"
+      }));
+      setTimeout(() => {
         setLoading(false);
-      }
+      }, 500);
     };
 
     fetchProfile();

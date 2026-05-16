@@ -8,8 +8,6 @@ import authStorage from '../utils/authStorage';
 import Button1 from '../components/ui/Button1';
 import paths from '../path/path';
 
-import { loginUser } from '../api/User-api';
-
 const Login = () => {
   const [formData, setFormData] = useState({
     userIdOrEmail: '',
@@ -31,36 +29,26 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     dispatch(loginStart());
     dispatch(startLoading());
 
-    try {
-      const res = await loginUser({
-        userId: formData.userIdOrEmail,
-        password: formData.password
-      });
+    // Simulating API call delay
+    setTimeout(() => {
+      const mockToken = 'mock-jwt-token';
+      const mockUser = {
+        id: '1',
+        name: 'Mock User',
+        email: formData.userIdOrEmail,
+        username: formData.userIdOrEmail
+      };
 
-      if (res.success) {
-        const token = res.token || res.data?.token;
-        const user = res.user || res.data?.user || res.data;
-        
-        if (token) {
-          authStorage.setToken(token);
-          dispatch(loginSuccess({ user, token }));
-          navigate(paths.home);
-        } else {
-          dispatch(loginFailure(res.message || 'Login failed: Token missing'));
-        }
-      } else {
-        dispatch(loginFailure(res.message || 'Invalid email or password'));
-      }
-    } catch (err) {
-      dispatch(loginFailure(err?.response?.data?.message || err.message || 'Invalid email or password'));
-    } finally {
+      authStorage.setToken(mockToken);
+      dispatch(loginSuccess({ user: mockUser, token: mockToken }));
       dispatch(stopLoading());
-    }
+      navigate(paths.home);
+    }, 1000);
   };
 
   return (

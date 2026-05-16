@@ -34,13 +34,8 @@ import TestimonialCard from '../components/home/TestimonialCard';
 import BlogCard from '../components/home/BlogCard';
 import Newsletter from '../components/home/Newsletter';
 import FilterButton from '../components/ui/FilterButton';
-import { getAllCategories } from '../api/Categories-api';
-import { getAllProducts } from '../api/Product-api';
-import { addToCart } from '../api/Cart-api';
-import { backendConfig } from '../constants/constant/Maincontent';
+import { categories as mockCategories, products as mockProducts } from '../data/mockData';
 import toast from 'react-hot-toast';
-
-
 
 import brand1 from "../assets/org.png";
 import brand2 from "../assets/ptr.png";
@@ -49,12 +44,6 @@ import brand4 from "../assets/healthy.png";
 import brand5 from "../assets/organic.png";
 import brand6 from "../assets/fr.png";
 import brand7 from "../assets/app.png";
-
-
-
-
-// fetatured img
-
 
 import klass from "../assets/klass.png"
 import makka from "../assets/makka.png"
@@ -73,96 +62,24 @@ import { useDispatch } from 'react-redux';
 const Home = () => {
     const [activeFilter, setActiveFilter] = useState('All Products');
     const filters = ['All Products', 'Vegetables', 'Snacks', 'Groceries'];
-    const [categories, setCategories] = useState([]);
-    const [allProducts, setAllProducts] = useState([]);
+    const [categories, setCategories] = useState(mockCategories);
+    const [allProducts, setAllProducts] = useState(mockProducts);
     const [loading, setLoading] = useState(false);
     const [productsLoading, setProductsLoading] = useState(false);
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
-    const fetchCategories = async () => {
-
-
-        setLoading(true);
-        try {
-            const res = await getAllCategories();
-            console.log("Categories API Response:", res);
-            if (res.success) {
-                const categoriesData = Array.isArray(res.data)
-                    ? res.data
-                    : (res.data?.categories || res.categories || []);
-
-                const formattedCategories = categoriesData.map(cat => ({
-                    name: cat.name || cat.categoryName,
-                    Image: (cat.image || cat.img)?.startsWith('http') 
-                        ? (cat.image || cat.img) 
-                        : `${backendConfig.origin}/${cat.image || cat.img}`,
-                    path: `/category/${cat._id || cat.id}`
-                }));
-
-                setCategories(formattedCategories);
-            } else {
-                toast.error(res.message || "Failed to fetch categories");
-            }
-        } catch (error) {
-            console.error("Error fetching categories:", error);
-            toast.error(
-                error?.response?.data?.message ||
-                error.message ||
-                "Something went wrong while fetching categories"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchProducts = async () => {
-        setProductsLoading(true);
-        try {
-            const res = await getAllProducts();
-            console.log("Products API Response:", res);
-            if (res.success) {
-                const productsData = Array.isArray(res.data)
-                    ? res.data
-                    : (res.data?.products || res.products || []);
-                
-                const formattedProducts = productsData.map(p => ({
-                    ...p,
-                    image: (p.image || p.img || p.images?.[0])?.startsWith('http')
-                        ? (p.image || p.img || p.images?.[0])
-                        : `${backendConfig.origin}/${p.image || p.img || p.images?.[0]}`
-                }));
-                setAllProducts(formattedProducts);
-            }
-        } catch (error) {
-            console.error("Error fetching products:", error);
-        } finally {
-            setProductsLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchCategories();
-        fetchProducts();
+        // Mock data is already set, no need to fetch
     }, []);
 
-    const handleAddToCart = async (productId, productName) => {
-        try {
-            const res = await addToCart(productId, 1);
-            if (res.success) {
-                toast.success(res.message || `${productName} added to cart!`);
-                // Instant update via Redux
-                dispatch(incrementCount(1));
-                dispatch(addItemOptimistically(productId));
-                // Trigger navbar update (for any other components listening)
-                window.dispatchEvent(new Event('cartUpdated'));
-            } else {
-                toast.error(res.message || "Failed to add to cart");
-            }
-        } catch (error) {
-            console.error("Add to cart error:", error);
-            toast.error(error?.response?.data?.message || "Something went wrong");
-        }
+    const handleAddToCart = (productId, productName) => {
+        toast.success(`${productName} added to cart!`);
+        // Instant update via Redux
+        dispatch(incrementCount(1));
+        dispatch(addItemOptimistically(productId));
+        // Trigger navbar update (for any other components listening)
+        window.dispatchEvent(new Event('cartUpdated'));
     };
 
     const heroSlides = [
@@ -415,7 +332,7 @@ const Home = () => {
                     <div className="flex flex-col items-center justify-center min-h-[150px] text-gray-500">
                         <p className="text-lg font-semibold">No categories found</p>
                         <button
-                            onClick={fetchCategories}
+                            onClick={() => {}}
                             className="mt-2 text-[var(--primary-color)] hover:underline"
                         >
                             Try again

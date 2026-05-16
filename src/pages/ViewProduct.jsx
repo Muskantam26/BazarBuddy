@@ -18,10 +18,10 @@ import pomegranateImg from '../assets/fresh_pomegranate.png';
 import onionImg from '../assets/onion.png';
 
 import { useParams } from "react-router-dom";
-import { getAllProductsById } from "../api/Viewproduct-api";
-import { addToCart } from "../api/Cart-api";
+import { products as mockProducts } from '../data/mockData';
 import { backendConfig } from '../constants/constant/Maincontent';
 import toast from 'react-hot-toast';
+import paths from '../path/path';
 
 const ViewProduct = () => {
   const navigate = useNavigate();
@@ -30,116 +30,66 @@ const ViewProduct = () => {
   const [activeTab, setActiveTab] = useState('Description');
   const [selectedImage, setSelectedImage] = useState(0);
 
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const wishlistItems = useSelector((state) => state.wishlist.items);
+  const cartItems = useSelector((state) => state.cart.items);
+  
+  const isInWishlist = product ? wishlistItems.some((item) => item._id === product._id) : false;
+  const isInCart = product ? cartItems.some((item) => (item.productId?._id || item.productId || item.id) === product._id) : false;
 
-const [product, setProduct] = useState(null);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState(null);
-const dispatch = useDispatch();
-const wishlistItems = useSelector((state) => state.wishlist.items);
-const cartItems = useSelector((state) => state.cart.items);
-const isInWishlist = product ? wishlistItems.some((item) => item._id === product._id) : false;
-const isInCart = product ? cartItems.some((item) => (item.productId?._id || item.productId || item.id) === product._id) : false;
+  const handleToggleWishlist = () => {
+    if (!isAuthenticated) {
+      toast.error("Please login to manage wishlist");
+      navigate(paths.login);
+      return;
+    }
+    if (product) {
+      dispatch(toggleWishlist(product));
+    }
+  };
 
-const handleToggleWishlist = () => {
-  if (product) {
-    dispatch(toggleWishlist(product));
-  }
-};
-
-const handleCartAction = () => {
-  if (isInCart) {
-    dispatch(toggleSidebar(true));
-  } else {
-    handleAddToCart();
-    dispatch(addItemOptimistically(product._id));
-  }
-};
-
-const fetchProduct = async () => {
-  try {
-    console.log("Fetching product with _id:", _id);
-    setLoading(true);
-    const res = await getAllProductsById(_id);
-    console.log("API Response:", res);
-
-    if (res.success) {
-      const productData = res.data?.product || res.data?.data || res.data;
-      if (!productData || Object.keys(productData).length === 0) {
-        setError("Product data is empty");
+  const handleCartAction = () => {
+    if (!isAuthenticated) {
+        toast.error("Please login to add items to cart");
+        navigate(paths.login);
         return;
-      }
-      // Handle image paths
-      if (productData.images && Array.isArray(productData.images)) {
-        productData.images = productData.images.map(img => 
-          img.startsWith('http') ? img : `${backendConfig.origin}/${img}`
-        );
-      } else if (productData.image) {
-        // If it has a single image instead of an array
-        const singleImg = productData.image.startsWith('http') 
-          ? productData.image 
-          : `${backendConfig.origin}/${productData.image}`;
-        productData.images = [singleImg];
+    }
+
+    if (isInCart) {
+      dispatch(toggleSidebar(true));
+    } else {
+      handleAddToCart();
+      dispatch(addItemOptimistically(product._id));
+    }
+  };
+
+  useEffect(() => {
+    if (_id) {
+      setLoading(true);
+      const foundProduct = mockProducts.find(p => p._id === _id || p.id === _id);
+      if (foundProduct) {
+        // Ensure images is an array
+        const productData = { ...foundProduct };
+        if (!productData.images && productData.image) {
+          productData.images = [productData.image];
+        }
+        setProduct(productData);
       } else {
-        productData.images = [];
+        setError("Product not found");
       }
-      
-      setProduct(productData);
-    } else {
-      setError(res.message || "Product not found");
+      setLoading(false);
     }
-  } catch (error) {
-    console.log(error);
-    setError("Failed to fetch product details");
-  } finally {
-    setLoading(false);
-  }
-};
+  }, [_id]);
 
-useEffect(() => {
-  if (_id) {
-    fetchProduct();
-  }
-}, [_id]);
-
-const handleAddToCart = async () => {
-  try {
-    const res = await addToCart(product._id, quantity);
-    if (res.success) {
-      toast.success(res.message || "Product added to cart!");
-      // Instant update via Redux
-      dispatch(incrementCount(quantity));
-      // Trigger navbar update
-      window.dispatchEvent(new Event('cartUpdated'));
-    } else {
-      toast.error(res.message || "Failed to add to cart");
-    }
-  } catch (error) {
-    console.error("Add to cart error:", error);
-    toast.error(error?.response?.data?.message || "Something went wrong");
-  }
-};
-
-  // const product = {
-  //   id: 1,
-  //   name: "Parle's Wafers",
-  //   tag: "Natural",
-  //   price: 50.0,
-  //   oldPrice: 55.0,
-  //   stockStatus: "In Stock",
-  //   description: "Parle's Wafers are a popular line of potato chips crafted from handpicked potatoes and seasoned with a variety of flavors to cater to diverse taste preferences. Known for their light and crispy texture, these wafers are a go-to snack for many.",
-  //   detailedDescription: "Parle's Wafers are thinly sliced potato chips that deliver a satisfying crunch in every bite. They are available in multiple flavors, including Classic Salted, Cream n' Onion, Masala Masti, Tangy Tomato, Piri Piri, Aloo Chaat, and Subtle Onion. These wafers are vegetarian-friendly and come in convenient pouch packaging, making them ideal for on-the-go snacking or sharing with friends and family.",
-  //   images: [piriPiriImg, tangyTomatoImg, onionImg, tangyTomatoImg],
-  //   specifications: [
-  //     { label: "Brand", value: "Parle" },
-  //     { label: "Product Type", value: "Potato Chips" },
-  //     { label: "Flavors Available", value: "Classic Salted, Cream n' Onion, Masala Masti, Tangy Tomato, Piri Piri, Aloo Chaat, Subtle Onion" },
-  //     { label: "Packaging", value: "Pouch" },
-  //     { label: "Weight Variants", value: "60g, 70g, 75g, 85g, 110g" },
-  //     { label: "Shelf Life", value: "Approximately 4 to 6 months" },
-  //     { label: "Dietary Preference", value: "Vegetarian" },
-  //     { label: "Country of Origin", value: "India" },
-  //   ],
-  // };
+  const handleAddToCart = async () => {
+    toast.success("Product added to cart!");
+    // window.dispatchEvent(new Event('cartUpdated')); // No longer needed as Redux handles it
+  };
 
   const bundleItems = [
     {
@@ -172,43 +122,9 @@ const handleAddToCart = async () => {
    
   ];
 
-  const bestsellers = [
-    {
-      id: 101,
-      name: "Fresh Eggs, Packs",
-      image: eggsImg,
-      tag: "Organic",
-      price: 500.0,
-      oldPrice: 540.0,
-      description: "Fresh eggs are a staple in many households, valued for their versatility and nutritional..."
-    },
-    {
-      id: 102,
-      name: "Parle's Wafers",
-      image: tangyTomatoImg,
-      tag: "Natural",
-      price: 50.0,
-      oldPrice: 55.0,
-      description: "Parle's Wafers are a popular line of potato chips crafted from handpicked potatoes and..."
-    },
-    {
-      id: 103,
-      name: "Fresh Organic Pomegranate",
-      image: pomegranateImg,
-      tag: "Healthy",
-      price: 500.0,
-      description: "Fresh Organic Pomegranates are cultivated without synthetic pesticides or fertilizers,..."
-    },
-    {
-      id: 104,
-      name: "Fresh Eggs, Packs",
-      image: eggsImg,
-      tag: "Organic",
-      price: 500.0,
-      oldPrice: 540.0,
-      description: "Fresh eggs are a staple in many households, valued for their versatility and nutritional..."
-    }
-  ];
+  const relatedProducts = product ? mockProducts
+    .filter(p => p.category === product.category && (p._id !== product._id && p.id !== product.id))
+    .slice(0, 4) : [];
 
   const tabs = ["Description", "Specification", "Question & Answer", "Product Enquiry", "Size Chart", "Additional Fields"];
 
@@ -445,6 +361,7 @@ const handleAddToCart = async () => {
               <div key={item.id} className="w-full md:w-[48%] lg:w-[35%] flex flex-col md:flex-row items-center justify-center p-2 relative">
                 <div className="max-w-[350px] w-full">
                   <ProductCard
+                    _id={item.id}
                     id={item.id}
                     image={item.image}
                     tag={item.tag}
@@ -453,8 +370,6 @@ const handleAddToCart = async () => {
                     price={item.price.toFixed(1)}
                     oldPrice={item.oldPrice?.toFixed(1)}
                     showCheck={true}
-                    onCartClick={() => console.log('Cart clicked')}
-                    onWishlistClick={() => console.log('Wishlist clicked')}
                   />
                 </div>
                 {idx < bundleItems.length - 1 && (
@@ -488,39 +403,32 @@ const handleAddToCart = async () => {
 
 
       {/* Related Products Slider */}
-      <div className="mt-15 ">
-        <SectionHeader
-          title="Bestseller Product"
-          linkText="View All products"
-          linkPath="/products"
-        />
-        <div className="relative group">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {bestsellers.map((item) => (
-              <ProductCard
-                key={item.id}
-                id={item.id}
-                image={item.image}
-                tag={item.tag}
-                name={item.name}
-                description={item.description}
-                price={item.price.toFixed(1)}
-                oldPrice={item.oldPrice?.toFixed(1)}
-                onCartClick={() => console.log('Cart clicked')}
-                onWishlistClick={() => console.log('Wishlist clicked')}
-              />
-            ))}
+      {relatedProducts.length > 0 && (
+        <div className="mt-15 ">
+          <SectionHeader
+            title="Related Products"
+            linkText="View All products"
+            linkPath="/products"
+          />
+          <div className="relative group">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedProducts.map((item) => (
+                <ProductCard
+                  key={item._id || item.id}
+                  _id={item._id || item.id}
+                  id={item._id || item.id}
+                  image={item.image}
+                  tag={item.tag}
+                  name={item.name}
+                  description={item.description}
+                  price={item.sellingPrice || item.price}
+                  oldPrice={item.mrp || item.oldPrice}
+                />
+              ))}
+            </div>
           </div>
-
-          {/* Navigation Arrows for Slider (Desktop) */}
-          {/* <button className="absolute -left-2 md:-left-5 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white shadow-xl flex items-center justify-center text-[var(--primary-color)] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all border border-gray-100 hover:bg-green-50 z-10">
-            <BsChevronLeft size={18} />
-          </button>
-          <button className="absolute -right-2 md:-right-3 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-[var(--primary-color)] shadow-xl flex items-center justify-center text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:bg-[var(--primary-dark)] z-10">
-            <BsChevronRight size={18} />
-          </button> */}
         </div>
-      </div>
+      )}
 
 
     </div>

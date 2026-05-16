@@ -31,13 +31,19 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
+      authStorage.removeToken();
     },
     setUser: (state, action) => {
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+    registerSuccess: (state, action) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
+      state.error = null;
+    },
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, setUser } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, setUser, registerSuccess } = authSlice.actions;
 export default authSlice.reducer;

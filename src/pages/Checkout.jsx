@@ -5,28 +5,31 @@ import paths from "../path/path";
 import Button1 from "../components/ui/Button1";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { getCheckoutDetails } from "../api/Cart-api";
-import { placeOrderApi } from "../api/Order-api";
-import { addUserAddressApi, getUserAddressApi } from "../api/Address-api";
 import Input from "../components/ui/Input";
 import AddressForm from "../components/address/AddressForm";
 
-const mapApiCartItem = (item) => ({
-  id: item?.productId?._id || item?.productId || item?.product?._id || item?.product,
-  title: item?.productName || item?.productId?.name || item?.product?.name || "Product",
-  price: Number(item?.sellingPrice || item?.productId?.sellingPrice || item?.product?.sellingPrice || 0),
-  mrp: Number(item?.mrp || item?.productId?.mrp || item?.product?.mrp || 0),
-  quantity: Number(item?.quantity || 1),
-});
+import { products as mockProducts } from "../data/mockData";
+
+const mapApiCartItem = (item) => {
+  const product = typeof item.productId === 'object' ? item.productId : 
+                 mockProducts.find(p => p._id === item.productId || p.id === item.productId);
+                 
+  return {
+    id: product?._id || product?.id || item?.productId,
+    title: product?.name || item?.productName || "Product",
+    price: Number(product?.sellingPrice || product?.price || 0),
+    mrp: Number(product?.mrp || product?.oldPrice || product?.sellingPrice || 0),
+    quantity: Number(item?.quantity || 1),
+  };
+};
 
 const Checkout = () => {
-  // Get role from Redux auth state
   const user = useSelector((state) => state.auth?.user);
   const role = user?.role;
   const userHasFranchiseRole = () => role === "franchise";
   const navigate = useNavigate();
 
-  const [cartId, setCartId] = useState("");
+  const [cartId, setCartId] = useState("mock-cart-id");
   const [cartItems, setCartItems] = useState([]);
   const [cartMeta, setCartMeta] = useState({
     subtotal: 0,
@@ -38,8 +41,21 @@ const Checkout = () => {
 
   const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
   const [courierMethod, setCourierMethod] = useState("");
-  const [addresses, setAddresses] = useState([]);
-  const [selectedAddress, setSelectedAddress] = useState("");
+  const [addresses, setAddresses] = useState([
+    {
+      _id: "addr1",
+      type: "Home",
+      shipping: {
+        fullName: "Mock User",
+        addressLine1: "123 Mock Street",
+        city: "Mock City",
+        state: "Mock State",
+        postalCode: "123456",
+        phone: "1234567890"
+      }
+    }
+  ]);
+  const [selectedAddress, setSelectedAddress] = useState("addr1");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
   const [billingForm, setBillingForm] = useState({
@@ -52,25 +68,25 @@ const Checkout = () => {
     phone: "",
   });
 
-  const loadCheckoutCart = useCallback(async () => {
-    try {
-      const response = await getCheckoutDetails();
-      const cart = response?.cart || response?.data?.cart || response?.data;
-      if (cart) {
-        setCartId(cart?._id || "");
-        setCartItems((cart.items || []).map(mapApiCartItem));
-        setCartMeta({
-          subtotal: Number(cart.subtotalAfterDiscount || cart.subtotal || 0),
-          totalMrp: Number(cart.totalMrp || 0),
-          totalDiscount: Number(cart.totalDiscount || 0),
-          shippingCharge: Number(cart.shippingCharge || 0),
-          grandTotal: Number(cart.grandTotal || 0),
-        });
-      }
-    } catch {
-      toast.error("Failed to fetch cart for checkout");
-    }
-  }, []);
+  const reduxCart = useSelector((state) => state.cart);
+
+  const loadCheckoutCart = useCallback(() => {
+    const items = reduxCart.items || [];
+    const mappedItems = items.map(mapApiCartItem);
+    setCartItems(mappedItems);
+    
+    // Accurate calculation based on mapped items
+    const subtotal = mappedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const totalMrp = mappedItems.reduce((acc, item) => acc + (item.mrp * item.quantity), 0);
+
+    setCartMeta({
+      subtotal: subtotal,
+      totalMrp: totalMrp,
+      totalDiscount: totalMrp - subtotal,
+      shippingCharge: subtotal > 500 ? 0 : 50,
+      grandTotal: subtotal + (subtotal > 500 ? 0 : 50),
+    });
+  }, [reduxCart]);
 
   useEffect(() => {
     loadCheckoutCart();
@@ -90,26 +106,6 @@ const Checkout = () => {
     }));
   }, []);
 
-  const fetchAddresses = useCallback(async () => {
-    try {
-      const res = await getUserAddressApi();
-      const addressList = res?.data?.addresses || res?.addresses || (Array.isArray(res?.data) ? res.data : []);
-      setAddresses(addressList);
-      if (addressList.length > 0) {
-        const defaultAddress = addressList[0];
-        setSelectedAddress(defaultAddress._id);
-        applyAddressToForm(defaultAddress);
-        setAddressType(defaultAddress?.type || "home");
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to fetch saved addresses");
-    }
-  }, [applyAddressToForm]);
-
-  useEffect(() => {
-    fetchAddresses();
-  }, [fetchAddresses]);
-
   const handleAddressSelect = (addressId) => {
     setSelectedAddress(addressId);
     const selected = addresses.find((addr) => addr._id === addressId);
@@ -118,9 +114,17 @@ const Checkout = () => {
     }
   };
 
-  const handleSaveAddressSuccess = async () => {
+  const handleSaveAddressSuccess = async (newAddressData) => {
+    const newAddr = {
+      _id: `addr_${Date.now()}`,
+      type: "New Address",
+      shipping: newAddressData
+    };
+    setAddresses(prev => [...prev, newAddr]);
+    setSelectedAddress(newAddr._id);
+    applyAddressToForm(newAddr);
     setIsAddingNewAddress(false);
-    await fetchAddresses();
+    toast.success("New address added successfully");
   };
 
   const handlePlaceOrder = async () => {
@@ -137,24 +141,11 @@ const Checkout = () => {
 
     setIsPlacingOrder(true);
 
-    try {
-      const payload = {
-        addressId: selectedAddress,
-        paymentMethod: paymentMethod === 'cash_on_delivery' ? 'cod' : paymentMethod,
-        // Add courier info if franchise
-        ...(userHasFranchiseRole()
-          ? { courier: { isOnline: courierMethod === "online", isOffline: courierMethod === "offline" } }
-          : {}),
-      };
-
-      const res = await placeOrderApi(payload);
-      toast.success(res?.message || "Order placed successfully");
-      navigate(paths.home); // Or to a success page if it exists
-    } catch (err) {
-      toast.error(err?.response?.data?.message || err?.message || "Failed to place order");
-    } finally {
+    setTimeout(() => {
       setIsPlacingOrder(false);
-    }
+      toast.success("Order placed successfully (Mock)");
+      navigate(paths.home);
+    }, 1500);
   };
 
   return (
@@ -236,20 +227,6 @@ const Checkout = () => {
                     <p className="text-sm text-gray-500">Pay when your order is delivered.</p>
                   </div>
                 </label>
-                {/* <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'online' ? 'border-[var(--primary-color)] bg-green-50/30' : 'border-gray-100'}`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="online"
-                    checked={paymentMethod === 'online'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-5 h-5 accent-[var(--primary-color)]"
-                  />
-                  <div>
-                    <p className="font-bold text-gray-900">Online Payment</p>
-                    <p className="text-sm text-gray-500">Pay securely via Cards, UPI or NetBanking.</p>
-                  </div>
-                </label> */}
               </div>
             </div>
           </div>

@@ -2,78 +2,54 @@ import React, { useState, useEffect } from 'react';
 import { HiX, HiTrash, HiMinus, HiPlus } from 'react-icons/hi';
 import FilterButton from '../ui/FilterButton';
 import { BiTrash } from 'react-icons/bi';
-import { getCartItems, addToCart, removeCartItem } from '../../api/Cart-api';
-import { useDispatch } from 'react-redux';
-import { fetchCartItems, toggleSidebar } from '../../redux/slices/cartSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchCartItems, toggleSidebar, updateQuantity, removeItem } from '../../redux/slices/cartSlice';
 import { backendConfig } from '../../constants/constant/Maincontent';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import paths from '../../path/path';
+import { products as mockProducts } from '../../data/mockData';
 
 
 const CartSidebar = ({ isOpen, onClose }) => {
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { items: cartItems, loading } = useSelector((state) => state.cart);
+  const navigate = useNavigate();
 
-  const fetchCartItems = async () => {
-    try {
-      setLoading(true);
-      const res = await getCartItems();
-      if (res.success || res.status === 'success') {
-        // Handle various possible response structures
-        const items = res.items || 
-                      res.data?.items || 
-                      res.cart?.items || 
-                      res.data?.cart?.items || 
-                      (Array.isArray(res.data) ? res.data : []);
-        
-        console.log("Extracted cart items:", items);
-        setCartItems(Array.isArray(items) ? items : []);
-        // Update Redux state with full items
-        dispatch(fetchCartItems());
-      }
-    } catch (error) {
-      console.error("Fetch cart error:", error);
-    } finally {
-      setLoading(false);
-    }
+  const loadCartData = () => {
+    dispatch(fetchCartItems());
   };
 
   useEffect(() => {
     if (isOpen) {
-      fetchCartItems();
+      loadCartData();
     }
   }, [isOpen]);
 
-  const handleUpdateQuantity = async (productId, newQuantity) => {
+  const handleUpdateQuantity = (productId, newQuantity) => {
     if (newQuantity < 1) return;
-    try {
-      const res = await addToCart(productId, newQuantity);
-      if (res.success) {
-        fetchCartItems();
-      }
-    } catch (error) {
-      toast.error("Failed to update quantity");
-    }
+    dispatch(updateQuantity({ productId, quantity: newQuantity }));
   };
 
-  const handleRemoveItem = async (productId) => {
-    try {
-      const res = await removeCartItem(productId);
-      if (res.success) {
-        toast.success("Item removed");
-        fetchCartItems();
-      }
-    } catch (error) {
-      toast.error("Failed to remove item");
-    }
+  const handleRemoveItem = (productId) => {
+    dispatch(removeItem(productId));
+    toast.success("Item removed");
   };
 
   const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
+
+  // Enhanced product lookup function
+  const getProductDetails = (item) => {
+    if (item.productId && typeof item.productId === 'object') return item.productId;
+    if (item.product && typeof item.product === 'object') return item.product;
+    
+    // Fallback: Lookup in mock data by ID
+    const id = item.productId || item.product || item.id;
+    return mockProducts.find(p => p._id === id || p.id === id) || {};
+  };
+
   const subtotal = safeCartItems.reduce((acc, item) => {
-    const product = item.productId || item.product || {};
+    const product = getProductDetails(item);
     const price = parseFloat(product.sellingPrice) || parseFloat(product.price) || 0;
     return acc + (price * item.quantity);
   }, 0);
@@ -115,21 +91,21 @@ const CartSidebar = ({ isOpen, onClose }) => {
               Your cart is empty
             </div>
           ) : (
-            safeCartItems.map((item) => {
-              const product = (item.productId && typeof item.productId === 'object') ? item.productId : 
-                              (item.product && typeof item.product === 'object') ? item.product : {};
+            safeCartItems.map((item, index) => {
+              const product = getProductDetails(item);
               
               // Handle various image field names
               const productImage = product.image || product.img || product.images?.[0];
               const productName = product.name || 'Product';
               const productPrice = parseFloat(product.sellingPrice) || parseFloat(product.price) || 0;
+              const productId = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.productId?._id);
 
               return (
-                <div key={item._id || product._id} className="flex gap-4 items-center pb-6 border-b border-gray-50 last:border-none">
+                <div key={item._id || productId || `cart-item-${index}`} className="flex gap-4 items-center pb-6 border-b border-gray-50 last:border-none">
                   {/* Product Image */}
                   <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center p-2 border border-gray-100">
                     <img 
-                      src={productImage?.startsWith('http') ? productImage : `${backendConfig.origin}/${productImage}`} 
+                      src={productImage} 
                       alt={productName} 
                       className="max-h-full max-w-full object-contain" 
                     />
@@ -142,7 +118,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
                         {productName}
                       </h3>
                       <button 
-                        onClick={() => handleRemoveItem(product._id || item.productId || item.product)}
+                        onClick={() => handleRemoveItem(productId)}
                         className="text-red-500 hover:scale-110 transition-transform"
                       >
                         <BiTrash size={20} />
@@ -153,20 +129,14 @@ const CartSidebar = ({ isOpen, onClose }) => {
                       {/* Quantity Controls */}
                       <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden h-10">
                         <button 
-                          onClick={() => {
-                            const id = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.productId?._id);
-                            handleUpdateQuantity(id, item.quantity - 1);
-                          }}
+                          onClick={() => handleUpdateQuantity(productId, item.quantity - 1)}
                           className="px-3 hover:bg-gray-50 text-gray-500 transition-colors cursor-pointer"
                         >
                           <HiMinus size={14} />
                         </button>
                         <span className="px-3 font-bold text-gray-900 w-6 text-center">{item.quantity}</span>
                         <button 
-                          onClick={() => {
-                            const id = product._id || product.id || (typeof item.productId === 'string' ? item.productId : item.productId?._id);
-                            handleUpdateQuantity(id, item.quantity + 1);
-                          }}
+                          onClick={() => handleUpdateQuantity(productId, item.quantity + 1)}
                           className="px-3 hover:bg-gray-50 text-gray-500 transition-colors cursor-pointer"
                         >
                           <HiPlus size={14} />

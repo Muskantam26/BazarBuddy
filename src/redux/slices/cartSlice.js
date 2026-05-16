@@ -1,38 +1,21 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getCountItems, getCartItems } from '../../api/Cart-api';
+
+// All API calls removed for frontend-only mode.
+// Mock data lookups should happen locally.
 
 export const fetchCartCount = createAsyncThunk(
   'cart/fetchCount',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getCountItems();
-      if (res.success || res.status === 'success') {
-        return res.count ?? res.data?.count ?? (typeof res.data === 'number' ? res.data : 0);
-      }
-      return 0;
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
+  async (_, { getState }) => {
+    const { cart } = getState();
+    return cart.items.length; // Count unique items
   }
 );
 
 export const fetchCartItems = createAsyncThunk(
   'cart/fetchItems',
-  async (_, { rejectWithValue }) => {
-    try {
-      const res = await getCartItems();
-      if (res.success || res.status === 'success') {
-        const items = res.items || 
-                      res.data?.items || 
-                      res.cart?.items || 
-                      res.data?.cart?.items || 
-                      (Array.isArray(res.data) ? res.data : []);
-        return items;
-      }
-      return [];
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
+  async (_, { getState }) => {
+    const { cart } = getState();
+    return cart.items;
   }
 );
 
@@ -49,24 +32,54 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     incrementCount: (state, action) => {
-      const amount = action.payload || 1;
-      state.count += amount;
+      // This is now redundant since we use state.items.length,
+      // but we'll update it to keep logic consistent.
+      state.count = state.items.length;
     },
     setCartCount: (state, action) => {
       state.count = action.payload;
     },
     decrementCount: (state, action) => {
-      state.count = Math.max(0, state.count - (action.payload || 1));
+      state.count = state.items.length;
     },
     toggleSidebar: (state, action) => {
       state.isSidebarOpen = action.payload !== undefined ? action.payload : !state.isSidebarOpen;
     },
     addItemOptimistically: (state, action) => {
       const productId = action.payload;
-      if (!state.items.some(item => (item.productId?._id || item.productId || item.id) === productId)) {
-        state.items.push({ productId: productId, quantity: 1 });
-        state.count += 1;
+      const id = typeof productId === 'object' ? (productId._id || productId.id) : productId;
+      
+      const existingItem = state.items.find(item => 
+        (item.productId?._id || item.productId || item.id) === id
+      );
+
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        state.items.push({ 
+          productId: productId, 
+          quantity: 1,
+          _id: `cart_${Date.now()}_${Math.random()}`
+        });
       }
+      state.count = state.items.length; // Number of unique products
+    },
+    updateQuantity: (state, action) => {
+        const { productId, quantity } = action.payload;
+        const item = state.items.find(item => 
+            (item.productId?._id || item.productId || item.id) === productId
+        );
+        if (item) {
+            item.quantity = quantity;
+        }
+        state.count = state.items.length; // Number of unique products
+    },
+    removeItem: (state, action) => {
+        const productId = action.payload;
+        state.items = state.items.filter(item => 
+            (item.productId?._id || item.productId || item.id) !== productId
+        );
+        state.count = state.items.length; // Number of unique products
     }
   },
   extraReducers: (builder) => {
@@ -82,13 +95,28 @@ const cartSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(fetchCartItems.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchCartItems.fulfilled, (state, action) => {
+        state.loading = false;
         state.items = action.payload;
-    
-        state.count = action.payload.length;
+        state.count = action.payload.length; // Number of unique products
+      })
+      .addCase(fetchCartItems.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { incrementCount, setCartCount, decrementCount, toggleSidebar, addItemOptimistically } = cartSlice.actions;
+export const { 
+    incrementCount, 
+    setCartCount, 
+    decrementCount, 
+    toggleSidebar, 
+    addItemOptimistically,
+    updateQuantity,
+    removeItem
+} = cartSlice.actions;
 export default cartSlice.reducer;

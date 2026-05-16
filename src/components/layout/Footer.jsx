@@ -42,7 +42,8 @@ const Footer = () => {
         <div className="flex flex-col gap-4 ">
           <div className="flex items-center gap-2">
             <div onClick={() => navigate(paths.home)} className="flex-shrink-0 cursor-pointer">
-              <img src={appFooterLogo} alt="Greentic" className="h-10 w-auto" />
+              {/* <img src={appFooterLogo} alt="Greentic" className="h-10 w-auto" /> */}
+              <h1 className="text-2xl font-extrabold text-white italic">BazarBuddy</h1>
             </div>
           </div>
           <p className="text-gray-400 leading-relaxed max-w-xs text-lg">

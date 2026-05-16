@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { loginStart, loginSuccess, loginFailure } from '../redux/slices/authSlice';
+import { loginStart, loginSuccess, loginFailure, registerSuccess } from '../redux/slices/authSlice';
 import { startLoading, stopLoading } from '../redux/slices/loadingSlice';
 import authStorage from '../utils/authStorage';
 import Button1 from '../components/ui/Button1';
 import paths from '../path/path';
-import { registerUser } from '../api/User-api';
 import toast from 'react-hot-toast';
 
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    sponsorId: '',
-    placementPosition: '', // 'left' or 'right'
     fullName: '',
     username: '',
     email: '',
@@ -38,7 +35,7 @@ const Register = () => {
 
 
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
@@ -49,28 +46,19 @@ const Register = () => {
     dispatch(loginStart());
     dispatch(startLoading());
 
-    try {
-      const res = await registerUser({
+    
+    setTimeout(() => {
+      const mockUser = {
         name: formData.fullName,
         email: formData.email,
-        phone: formData.mobile,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        position: formData.placementPosition,
-        sponsorId: formData.sponsorId
-      });
-
-      if (res.success) {
-        toast.success(res.message || 'Registration successful! OTP sent to your email.');
-        navigate(paths.verifyOtp, { state: { email: formData.email } });
-      } else {
-        dispatch(loginFailure(res.message || 'Registration failed'));
-      }
-    } catch (err) {
-      dispatch(loginFailure(err?.response?.data?.message || err.message || 'Registration failed'));
-    } finally {
+        username: formData.username
+      };
+      
+      dispatch(registerSuccess(mockUser));
       dispatch(stopLoading());
-    }
+      toast.success('Registration successful! Welcome to Greentic.');
+      navigate(paths.home);
+    }, 1000);
   };
 
   return (
@@ -88,58 +76,7 @@ const Register = () => {
             </div>
           )}
 
-          {/* Sponsor Information */}
-          <section className="p-6 bg-gray-50/50 rounded-xl border border-gray-100">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-red-500 uppercase tracking-wider mb-2">
-                  Sponsor / Referral ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="sponsorId"
-                  required
-                  value={formData.sponsorId}
-                  onChange={handleChange}
-                  placeholder="e.g. COL-8392"
-                  className="w-full px-5 py-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:border-transparent transition-all placeholder:text-gray-300 text-lg font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                  Placement Position <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, placementPosition: 'left' }))}
-                    className={`py-4 px-6 rounded-xl border-2 font-bold uppercase tracking-wide transition-all ${
-                      formData.placementPosition === 'left'
-                        ? 'border-[var(--primary-color)] bg-[var(--primary-color)] text-white shadow-lg shadow-emerald-100'
-                        : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'
-                    }`}
-                  >
-                    Left Leg
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, placementPosition: 'right' }))}
-                    className={`py-4 px-6 rounded-xl border-2 font-bold uppercase tracking-wide transition-all ${
-                      formData.placementPosition === 'right'
-                        ? 'border-[var(--primary-color)] bg-[var(--primary-color)] text-white shadow-lg shadow-emerald-100'
-                        : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'
-                    }`}
-                  >
-                    Right Leg
-                  </button>
-                </div>
-                {/* Hidden input for form validation if needed */}
-                <input type="hidden" name="placementPosition" value={formData.placementPosition} required />
-              </div>
-            </div>
-          </section>
-
+        
           {/* Personal Information */}
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>

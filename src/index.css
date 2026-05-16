@@ -6,9 +6,9 @@
     --fa-font-regular: normal 400 1em/1 "Font Awesome 6 Free";
     --fa-style-family-classic: "Font Awesome 6 Free";
     --fa-font-solid: normal 900 1em/1 "Font Awesome 6 Free";
-    --primary-color: #4caf50;
+    --primary-color: #d09b37;
     --red-color: #f44336;
-    --primary-dark: #388e3c;
+    --primary-dark: #bc7d35;
     --primary-light: #4CAF501A;
     --accent-color: #ff9800;
     --accent-dark: #f57c00;
@@ -32,7 +32,7 @@
     --text-on-dark: #e5e7eb;
     --bg-soft: #f3f4f6;
     --price-track: #333;
-    --price-fill: #6ab344;
+    --price-fill: #e0eaec;
     --dot-inactive: #f99191;
     --bg-color:rgb(249 250 251);
     --green-gradient: linear-gradient(135deg, #28a745 0%, #20c997 100%);
