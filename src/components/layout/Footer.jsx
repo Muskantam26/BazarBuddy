@@ -106,7 +106,7 @@ const Footer = () => {
 
       {/* Bottom Footer */}
       <div className=" mx-auto border-t border-white/5 mt-5 pt-5 text-center text-gray-400 text-lg">
-        <p>© 2025, Greentic rights reserved.</p>
+        <p>© 2026, BazarBuddy rights reserved.</p>
       </div>
     </footer>
   );
